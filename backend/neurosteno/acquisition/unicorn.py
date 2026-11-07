@@ -287,9 +287,19 @@ class UnicornSource(EEGSource):
         counter_ch = self.channel_by_kind("counter")
         battery_ch = self.channel_by_kind("battery")
         validation_ch = self.channel_by_kind("validation")
+        # UnicornPy's GetData blocks while HOLDING the Python GIL, which starves the engine and the
+        # web server (measured: 5 engine ticks in 20 s). Pace the reads: wait (GIL released) until a
+        # frame is almost certainly buffered, so GetData returns at once. If we fall behind, no wait.
+        period = self.frame_length / self.sample_rate
+        t_start, read = time.monotonic(), 0
         while not self._stop_evt.is_set():
+            ahead = (read + self.frame_length) / self.sample_rate - (time.monotonic() - t_start)
+            if ahead > 0:
+                if self._stop_evt.wait(min(ahead + 0.25 * period, 2 * period)):
+                    break
             try:
                 self._device.GetData(self.frame_length, rx, buf_len)
+                read += self.frame_length
             except Exception as e:
                 if self._stop_evt.is_set():
                     break
