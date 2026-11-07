@@ -129,9 +129,19 @@ export function readInputs(s: State, contract: 'proposed' | 'confirmed' = MULTIM
   }
 }
 
+/**
+ * Team confirmation policy (2026-11-07), enforced here regardless of what any backend policy says:
+ *  - EEG confirmation is ALWAYS available.
+ *  - A calibrated AND explicitly enabled head nod may answer YES for normal navigation (action "confirm").
+ *  - Final SEND (action "review") stays a separate, deliberate EEG confirmation. Gesture-based final
+ *    confirmation is disabled until real-world false-activation testing supports it.
+ */
+export const GESTURE_FINAL_CONFIRM_ENABLED = false
+
 /** What the patient can use to answer the current YES/NO, from backend state only. */
 export function answerMethods(vm: InputsVM, action: 'confirm' | 'review' | 'choose' | null): MethodKey[] {
   const out: MethodKey[] = ['eeg_ssvep']
+  if (action === 'review' && !GESTURE_FINAL_CONFIRM_ENABLED) return out
   if (action !== 'confirm' && action !== 'review') return out
   if (vm.policy && vm.policy.action !== action) return out
   const allowed = (k: MethodKey) => vm.methods[k].active && (!vm.policy || vm.policy.options.some((o) => o.method === k && o.allowed))

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { command } from '../api'
 import { MOCK_LABEL, MOCKS, type MockKey } from '../mockMultimodal'
 import {
-  answerMethods, type GestureCalibSession, type InputMode, type InputsVM, METHOD_INFO, type MethodKey, MODE_INFO, MULTIMODAL_CONTRACT,
+  answerMethods, GESTURE_FINAL_CONFIRM_ENABLED, type GestureCalibSession, type InputMode, type InputsVM, METHOD_INFO, type MethodKey, MODE_INFO, MULTIMODAL_CONTRACT,
   readInputs, STATUS_INFO,
 } from '../multimodal'
 import { speakCue } from '../speech'
@@ -112,7 +112,10 @@ export function PolicyCard({ vm }: { vm: InputsVM }) {
         <thead><tr className="text-left"><th>method</th><th>allowed</th><th>expected latency</th><th>confidence</th><th>why</th></tr></thead>
         <tbody>{p.options.map((o) => (
           <tr key={o.method} className={`border-t border-line ${o.method === p.selected ? 'font-bold' : ''}`}>
-            <td>{METHOD_INFO[o.method].label}</td><td>{o.allowed ? '✓' : '✗'}</td>
+            <td>{METHOD_INFO[o.method].label}</td>
+            <td>{p.action === 'review' && !GESTURE_FINAL_CONFIRM_ENABLED && o.method !== 'eeg_ssvep' && o.method !== 'eeg_fallback'
+              ? <span data-testid="final-gesture-blocked" title="Final SEND stays a separate EEG confirmation until real-world false-activation testing supports gestures">✗ not for final SEND</span>
+              : o.allowed ? '✓' : '✗'}</td>
             <td>{o.expected_latency_s != null ? `${o.expected_latency_s} s` : '-'}</td><td>{o.confidence != null ? `${Math.round(o.confidence * 100)}%` : '-'}</td><td>{o.reason}</td>
           </tr>
         ))}</tbody>
@@ -145,7 +148,9 @@ export function InputStrip({ vm, action }: { vm: InputsVM; action: 'choose' | 'c
           <span className="rounded-lg bg-panel2 px-2 py-0.5 font-bold">👁 look at YES / NO</span>
           {gestures.includes('nod_yes') && <span className="rounded-lg bg-green-900 px-2 py-0.5 font-bold">↕ nod = YES</span>}
           {gestures.includes('shake_no') && <span className="rounded-lg bg-red-900 px-2 py-0.5 font-bold">↔ shake = NO</span>}
-          {gestures.length === 0 && vm.provenance !== 'eeg_only_default' && <span className="text-sm text-muted">(head gestures not active)</span>}
+          {action === 'review'
+            ? <span className="text-sm text-muted" data-testid="final-eeg-only">Final message: look at SEND. Head gestures are not used to send.</span>
+            : gestures.length === 0 && vm.provenance !== 'eeg_only_default' && <span className="text-sm text-muted">(head gestures not active)</span>}
         </p>
       )}
       {g && (

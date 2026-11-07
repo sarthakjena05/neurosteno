@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import InputsTab, { GestureCalibrationView, InputStrip } from '../components/Inputs'
+import InputsTab, { GestureCalibrationView, InputStrip, PolicyCard } from '../components/Inputs'
 import MultimodalBench from '../components/MultimodalBench'
 import PatientView from '../components/PatientView'
 import { MOCKS } from '../mockMultimodal'
-import { answerMethods, bestFor, type InputBackend, MULTIMODAL_CONTRACT, readInputs, readMultimodalBench, type PolicyState } from '../multimodal'
+import { answerMethods, bestFor, GESTURE_FINAL_CONFIRM_ENABLED, type InputBackend, MULTIMODAL_CONTRACT, readInputs, readMultimodalBench, type PolicyState } from '../multimodal'
 import type { State } from '../types'
 import { mockState } from './mockState'
 
@@ -88,6 +88,30 @@ describe('adaptive input visualization (confirmed backend state)', () => {
     const review: PolicyState = { ...policy, action: 'review', options: [{ method: 'nod_yes', allowed: false, expected_latency_s: null, confidence: null, reason: 'final message: EEG YES required' }] }
     const vm = readInputs(withInput(backendInput(), { policy: review }), 'confirmed')
     expect(answerMethods(vm, 'review')).toEqual(['eeg_ssvep'])
+  })
+
+  it('final SEND stays EEG-only even if a backend policy allows a gesture there', () => {
+    expect(GESTURE_FINAL_CONFIRM_ENABLED).toBe(false)
+    const permissive: PolicyState = { ...policy, action: 'review', options: [
+      { method: 'nod_yes', allowed: true, expected_latency_s: 0.9, confidence: 0.99, reason: 'backend says ok' },
+      { method: 'eeg_ssvep', allowed: true, expected_latency_s: 3, confidence: 0.9, reason: 'EEG' }] }
+    const all = backendInput({ shake_no: { status: 'calibrated', enabled: true, reason: null, calibration: null } })
+    const vm = readInputs(withInput(all, { policy: permissive }), 'confirmed')
+    expect(answerMethods(vm, 'review')).toEqual(['eeg_ssvep'])
+    render(<InputStrip vm={vm} action="review" />)
+    expect(screen.getByTestId('answer-with')).toHaveTextContent('look at YES / NO')
+    expect(screen.getByTestId('answer-with')).not.toHaveTextContent('nod = YES')
+    expect(screen.getByTestId('final-eeg-only')).toHaveTextContent('Head gestures are not used to send')
+    render(<PolicyCard vm={vm} />)
+    expect(screen.getByTestId('final-gesture-blocked')).toHaveTextContent('not for final SEND')
+  })
+
+  it('a calibrated, enabled nod may answer YES for normal navigation; EEG is always offered', () => {
+    const vm = readInputs(withInput(backendInput()), 'confirmed') // no policy published
+    expect(answerMethods(vm, 'confirm')).toEqual(['eeg_ssvep', 'nod_yes'])
+    for (const a of ['confirm', 'review', 'choose', null] as const) expect(answerMethods(vm, a)[0]).toBe('eeg_ssvep')
+    const off = readInputs(withInput(backendInput({ nod_yes: { status: 'calibrated', enabled: false, reason: null, calibration: null } })), 'confirmed')
+    expect(answerMethods(off, 'confirm')).toEqual(['eeg_ssvep']) // calibrated but not explicitly enabled
   })
 
   it('conflicting or movement-disturbed signals visibly abstain', () => {

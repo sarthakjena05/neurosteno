@@ -82,7 +82,9 @@ confirmation and healthy signals. The Demo tab never presses YES/SEND for the pa
    - **Hybrid example (design preview, not yet backed by the backend):** pick *Patient with reliable residual
      head movement* under **UI preview with mock states**. Point at the **MOCK · UI PREVIEW · NOT BACKEND
      STATE** banner: after a passing nod/shake check *and* a caregiver switch, the patient could answer
-     YES with a nod; EEG still picks the choice, and conflicting signals abstain (*Conflicting signals* mock).
+     YES with a nod **during navigation**; EEG still picks the choice, conflicting signals abstain (*Conflicting
+     signals* mock), and the **final SEND is always a separate EEG confirmation**. Gesture-based final
+     confirmation stays disabled until real-world false-activation testing supports it; EEG-only always works.
    - Neither example is validated. The **"Which method suits which patient?"** section of the comparison page
      shows *NOT MEASURED* for all four strategies (Fixed EEG-only, Adaptive EEG-only, Hybrid EEG + IMU,
      Optimized multimodal) until the backend publishes the multimodal benchmark; then it shows which method
