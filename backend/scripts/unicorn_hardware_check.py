@@ -27,7 +27,8 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from neurosteno.acquisition.unicorn import classify_channel, find_unicorn_lib_dir, load_unicornpy  # noqa: E402
+from neurosteno.acquisition.unicorn import (DEFAULT_EEG_LABELS, classify_channel, find_unicorn_lib_dir,  # noqa: E402
+                                           load_unicornpy)
 
 OK, WARN, FAIL = "[ OK ]", "[WARN]", "[FAIL]"
 
@@ -96,11 +97,11 @@ def eeg_plausibility(eeg, fs: float) -> None:
     xf = sosfiltfilt(butter(4, [1, 40], btype="bandpass", fs=fs, output="sos"), seg, axis=0)
     stds = xf.std(axis=0)
     drift = np.abs(eeg[-int(fs):].mean(axis=0) - eeg[: int(fs)].mean(axis=0))
-    corr = np.corrcoef(xf.T)
+    corr = np.abs(np.corrcoef(xf.T))
     mean_offdiag = (corr.sum() - len(corr)) / (len(corr) ** 2 - len(corr))
     print("   1-40 Hz std per channel (µV):", np.round(stds, 1).tolist())
     print("   DC drift first->last second (µV):", np.round(drift).tolist())
-    print(f"   mean inter-channel correlation (1-40 Hz): {mean_offdiag:.3f}")
+    print(f"   mean inter-channel |correlation| (1-40 Hz): {mean_offdiag:.3f}")
     problems = []
     if mean_offdiag > 0.95:
         problems.append("all channels carry the same signal -> reference/ground (ear clips) not on skin, or headset not worn")
@@ -254,7 +255,14 @@ def main() -> None:
         eeg_plausibility(eeg.astype(float), float(U.SamplingRate))
         out = Path(__file__).resolve().parents[1] / "recordings" / f"hardware_check_{serial.replace('.', '_')}.npz"
         out.parent.mkdir(exist_ok=True)
-        channels = [{"index": i, "name": c.Name, "kind": classify_channel(c.Name), "unit": c.Unit, "label": ""} for i, c in enumerate(enabled)]
+        channels, eeg_i = [], 0
+        for i, c in enumerate(enabled):
+            kind = classify_channel(c.Name)
+            label = ""
+            if kind == "eeg":
+                label = DEFAULT_EEG_LABELS[eeg_i] if eeg_i < len(DEFAULT_EEG_LABELS) else c.Name
+                eeg_i += 1
+            channels.append({"index": i, "name": c.Name, "kind": kind, "unit": c.Unit, "label": label})
         np.savez_compressed(out, data=data, sample_rate=np.float64(U.SamplingRate), channels=json.dumps(channels),
                             meta=json.dumps({"origin": "real", "device": serial, "created": time.time(),
                                              "duration_s": data.shape[0] / U.SamplingRate, "notes": "hardware check"}),

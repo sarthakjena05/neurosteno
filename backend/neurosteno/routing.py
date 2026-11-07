@@ -275,13 +275,38 @@ def plan_routing(catalog: Catalog, suggestions: list[Suggestion], n: int, mode: 
     return plan
 
 
+def route_path(catalog: Catalog, target_id: str, n: int, shortcuts: tuple[str, ...] = (),
+               urgent: tuple[str, ...] = ()) -> list[dict]:
+    """The exact selections (slot label + kind) the navigator's shortest route takes."""
+    nav = Navigator(catalog, list(shortcuts), list(urgent))
+    nav.track_undo = False
+    out = []
+    for _ in range(40):
+        slots = nav.slots(n)
+        slot = slots[nav.slot_toward(slots, target_id)]
+        if slot.kind == "group":
+            kind = "group"
+        else:
+            o = slot.options[0]
+            kind = ("back" if o.kind == "back" else "urgent_route" if o.key.startswith("ur:") else
+                    "shortcut" if o.key.startswith("sc:") else "option")
+        out.append({"label": slot.label, "kind": kind})
+        if nav.select(slot) is not None:
+            return out
+    raise RuntimeError(f"no route to {target_id}")
+
+
 def compare_scenarios(catalog: Catalog, store, ns=(2, 3, 5)) -> list[dict]:
-    """Exact selection counts for the scenario messages: static menu vs. risk-aware routing."""
+    """Exact selection counts for the scenario messages: static menu vs. risk-aware routing.
+    Uses the SEED profiles only (no runtime history), so the numbers are stable during a demo.
+    Time estimates use the labelled assumptions in ASSUMED (no calibration involved)."""
     from .context import rank, shortcuts as pick
 
+    rel = {k: reliability_for(k, {}, "none") for k in (2, 3, 5)}
+    t_review = rel[2].decision_s / max(0.05, 1 - rel[2].abstain)
     rows = []
     for sc in SCENARIOS:
-        profile = store.load(sc["profile"])
+        profile = store.load(sc["profile"])  # seed only: no origin -> no runtime history
         sugg = rank(profile, catalog)
         cand = pick(sugg, catalog)
         for n in ns:
@@ -289,7 +314,14 @@ def compare_scenarios(catalog: Catalog, store, ns=(2, 3, 5)) -> list[dict]:
             for mkey, mid in SCENARIO_MESSAGES.items():
                 s_static = selections_to(catalog, mid, n)
                 s_adapt = selections_to(catalog, mid, n, tuple(plan.shortcuts), tuple(plan.urgent))
+                t_sel = selection_time(rel[n], rel[2], 1.0, 1.0)
                 rows.append({"scenario": sc["id"], "profile": sc["profile"], "n": n, "message": mkey,
                              "text": catalog.get(mid).phrase, "static": s_static, "adaptive": s_adapt,
-                             "delta": s_adapt - s_static, "shortcuts": plan.shortcuts})
+                             "delta": s_adapt - s_static, "shortcuts": plan.shortcuts,
+                             "path_static": route_path(catalog, mid, n),
+                             "path_adaptive": route_path(catalog, mid, n, tuple(plan.shortcuts), tuple(plan.urgent)),
+                             "est_time_static_s": round(s_static * t_sel + t_review, 1),
+                             "est_time_adaptive_s": round(s_adapt * t_sel + t_review, 1),
+                             "time_source": "assumption", "selection_time_s": round(t_sel, 2),
+                             "profile_source": "seed"})
     return rows

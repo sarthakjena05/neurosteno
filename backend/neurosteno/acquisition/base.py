@@ -155,6 +155,33 @@ class EEGSource:
     def channel_by_kind(self, kind: str) -> ChannelInfo | None:
         return next((c for c in self.channels if c.kind == kind), None)
 
+    # ---- motion sensors (optional) -----------------------------------------------------
+    def imu_layout(self) -> dict | None:
+        """Column indices of the 3-axis accelerometer and gyroscope, or None if the source does not
+        carry both (e.g. a recording made without motion channels). EEG never depends on this."""
+        acc = [c.index for c in self.channels if c.kind == "accel"]
+        gyr = [c.index for c in self.channels if c.kind == "gyro"]
+        if len(acc) != 3 or len(gyr) != 3:
+            return None
+        return {"accel": acc, "gyro": gyr,
+                "accel_unit": self.channels[acc[0]].unit, "gyro_unit": self.channels[gyr[0]].unit}
+
+    def read_motion(self, abs_start: int, abs_end: int) -> dict | None:
+        """Accelerometer (g) and gyroscope (deg/s) samples for absolute sample indices
+        [abs_start, abs_end), timestamped on the SAME sample clock as the EEG (the Unicorn sends
+        EEG and motion in one frame, so they are sample-aligned by construction).
+        Returns None if the source has no motion channels."""
+        lay = self.imu_layout()
+        if lay is None:
+            return None
+        end = min(abs_end, self.total_samples)
+        x = self.read_range(abs_start, end)
+        n = x.shape[0]
+        first = end - n
+        idx = np.arange(first, end)
+        return {"sample": idx, "t": idx / self.sample_rate, "fs": self.sample_rate,
+                "accel_g": x[:, lay["accel"]].astype(np.float64), "gyro_dps": x[:, lay["gyro"]].astype(np.float64)}
+
     # ---- lifecycle (overridden) --------------------------------------------------------
     def start(self) -> None:  # pragma: no cover - abstract
         raise NotImplementedError

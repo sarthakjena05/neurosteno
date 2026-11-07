@@ -14,11 +14,19 @@ With a handful of trials per class these estimates are noisy. They are reported 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
+from scipy.signal import sosfiltfilt
 
 from .fbcca import DynamicStopper, FBCCAConfig, StoppingConfig, fbcca_scores, margin_of
+from .quality import _bp
+
+# Trial quality gate (decoding channels, 1-40 Hz). Occipital SSVEP is a few µV; anything this
+# large is movement, cable or electrode artifact and would corrupt the thresholds.
+TRIAL_MAX_STD_UV = 40.0
+TRIAL_MAX_PTP_UV = 250.0
+TRIAL_MIN_STD_UV = 0.3
 
 
 @dataclass
@@ -26,6 +34,32 @@ class Trial:
     eeg: np.ndarray  # [n_samples, n_channels] from stimulus onset (latency already skipped)
     label: int | None  # target index, or None for a rest trial
     pad: np.ndarray | None = None
+    flags: list = field(default_factory=list)  # set online, e.g. "dropped samples", "signal problem"
+
+
+def trial_quality(t: Trial, fs: float) -> list[str]:
+    """Reasons to reject a calibration trial (empty = usable)."""
+    reasons = list(t.flags)
+    x = t.eeg
+    if x.shape[0] < int(fs) or not np.all(np.isfinite(x)):
+        return reasons + ["missing samples"]
+    xf = sosfiltfilt(_bp(fs, 1.0, 40.0), x - x.mean(axis=0), axis=0)
+    std, ptp = xf.std(axis=0), np.ptp(xf, axis=0)
+    if np.any(std < TRIAL_MIN_STD_UV):
+        reasons.append("flat decoding channel")
+    if np.any(std > TRIAL_MAX_STD_UV) or np.any(ptp > TRIAL_MAX_PTP_UV):
+        reasons.append(f"artifact (max 1-40 Hz std {std.max():.0f} µV, ptp {ptp.max():.0f} µV)")
+    return reasons
+
+
+def rest_threshold_from(rest_top: list[float], percentile: float, z: float) -> float:
+    """Upper tail of the rest (no-attention) top-score distribution. With the handful of rest
+    trials a session affords, the empirical 95th percentile is close to the sample maximum and
+    lets roughly a third of new rest windows through (measured on the simulator). Use the larger
+    of that percentile and a parametric mean + z*SD bound."""
+    a = np.asarray(rest_top, dtype=float)
+    par = float(a.mean() + z * a.std(ddof=1)) if a.size >= 3 else float(a.max())
+    return max(float(np.percentile(a, percentile)), par)
 
 
 def window_grid(min_s: float, max_s: float, step_s: float) -> list[float]:
@@ -46,10 +80,25 @@ def choose_margin_threshold(margins: np.ndarray, correct: np.ndarray, target_acc
 
 def calibrate(trials: list[Trial], freqs: list[float], fs: float, fbcca: FBCCAConfig | None = None,
               min_window_s: float = 1.0, max_window_s: float = 4.0, step_s: float = 0.25,
-              target_acc: float = 0.9, rest_percentile: float = 95.0, base: StoppingConfig | None = None) -> dict:
+              target_acc: float = 0.9, rest_percentile: float = 95.0, base: StoppingConfig | None = None,
+              rest_z: float = 2.33, quality_gate: bool = True) -> dict:
     fbcca = fbcca or FBCCAConfig()
+    rejected = []
+    if quality_gate:
+        kept = []
+        for i, t in enumerate(trials):
+            why = trial_quality(t, fs)
+            if why:
+                rejected.append({"index": i, "label": t.label, "reasons": why})
+            else:
+                kept.append(t)
+        trials = kept
     cued = [t for t in trials if t.label is not None]
     rest = [t for t in trials if t.label is None]
+    per_target = [sum(1 for t in cued if t.label == k) for k in range(len(freqs))]
+    if min(per_target) < 2:
+        raise ValueError(f"need at least 2 usable cued trials per target, got {per_target} "
+                         f"({len(rejected)} trial(s) rejected for quality)")
     if len(cued) < 2 * len(freqs):
         raise ValueError(f"need at least 2 cued trials per target ({2 * len(freqs)}), got {len(cued)}")
     max_len = min(t.eeg.shape[0] for t in cued) / fs
@@ -74,7 +123,7 @@ def calibrate(trials: list[Trial], freqs: list[float], fs: float, fbcca: FBCCACo
             if t.eeg.shape[0] >= n:
                 rest_top.append(float(np.max(fbcca_scores(t.eeg[:n], fs, freqs, fbcca, t.pad))))
         if rest_top:
-            rest_thr[L] = float(np.percentile(rest_top, rest_percentile))
+            rest_thr[L] = rest_threshold_from(rest_top, rest_percentile, rest_z)
         # A window length where no threshold reaches target accuracy can never accept.
         margin_thr[L] = thr if thr is not None else 1.01
         per_window.append({
@@ -102,13 +151,16 @@ def calibrate(trials: list[Trial], freqs: list[float], fs: float, fbcca: FBCCACo
         "freqs": list(freqs),
         "n_cued_trials": len(cued),
         "n_rest_trials": len(rest),
+        "rejected_trials": rejected,
+        "n_rejected": len(rejected),
         "target_accuracy": target_acc,
         "per_window": per_window,
         "dynamic_stopping_estimate": sim,
         "supported": bool(supported),
         "stopping": stopping.to_dict(),
-        "caveat": (f"Estimate from {len(cued)} cued + {len(rest)} rest trials in one session; "
-                   "not a validated accuracy figure."),
+        "caveat": (f"Estimate from {len(cued)} cued + {len(rest)} rest trials in one session"
+                   + (f" ({len(rejected)} rejected for quality)" if rejected else "")
+                   + "; not a validated accuracy figure."),
     }
 
 

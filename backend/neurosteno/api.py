@@ -166,11 +166,37 @@ async def routing_compare():
 
 
 @app.get("/api/benchmark")
-def benchmark():
+def benchmark(sessions: bool = False):
+    """SIMULATED A/B/C/D benchmark report (scripts/run_benchmark.py). Per-session rows (~1 MB)
+    only with ?sessions=true."""
     p = Path(__file__).resolve().parents[1] / "reports" / "benchmark_results.json"
     if not p.exists():
         return {"available": False}
-    return {"available": True, **json.loads(p.read_text(encoding="utf-8"))}
+    data = json.loads(p.read_text(encoding="utf-8"))
+    if not sessions:
+        data.pop("sessions", None)
+        data.pop("decoder_pools", None)
+    return {"available": True, **data}
+
+
+@app.get("/api/benchmark/multimodal")
+def benchmark_multimodal(sessions: bool = False):
+    """SIMULATED multimodal benchmark (scripts/run_multimodal_benchmark.py)."""
+    p = Path(__file__).resolve().parents[1] / "reports" / "multimodal_results.json"
+    if not p.exists():
+        return {"available": False}
+    data = json.loads(p.read_text(encoding="utf-8"))
+    if not sessions:
+        data.pop("sessions", None)
+    return {"available": True, **data}
+
+
+@app.get("/api/interaction")
+def interaction():
+    """Capability profile + full policy decision (all candidates)."""
+    cap = engine.capability().to_dict()
+    return {"imu": engine.imu, "capability": cap, "decision": engine.policy_decision,
+            **engine.interaction_state()}
 
 
 @app.post("/api/emergency")
@@ -201,8 +227,8 @@ def dispatch(action: str, p: dict) -> dict | None:
         e.cfg.auto_adapt = bool(p["on"])
         e.log("config", f"Adaptive choice count {'on' if e.cfg.auto_adapt else 'off'}")
     elif action == "set_policy":
-        if p["policy"] not in ("explicit", "provisional", "auto"):
-            raise ValueError("policy must be explicit, provisional or auto")
+        if p["policy"] not in ("explicit", "provisional", "gated", "auto"):
+            raise ValueError("policy must be explicit, provisional, gated or auto")
         e.cfg.policy = p["policy"]
         e.request_plan()
         e.log("config", f"Confirmation policy: {p['policy']}")
@@ -227,9 +253,11 @@ def dispatch(action: str, p: dict) -> dict | None:
     elif action == "ack_emergency":
         e.cmd_ack_emergency()
     elif action == "start_calibration":
-        e.start_calibration(int(p.get("n", 2)), int(p.get("trials_per_target", 5)), int(p.get("rest_trials", 4)))
+        e.start_calibration(int(p.get("n", 2)), int(p.get("trials_per_target", 5)), int(p.get("rest_trials", 8)))
     elif action == "start_blink_calibration":
         e.start_blink_calibration(int(p.get("cues", 8)))
+    elif action == "start_alpha_check":
+        e.start_alpha_check(int(p.get("cycles", 2)))
     elif action == "cancel_calibration":
         e.cancel_calibration()
     elif action == "set_blink_enabled":
@@ -238,6 +266,18 @@ def dispatch(action: str, p: dict) -> dict | None:
             raise ValueError("Blink input requires a successful blink calibration on real EEG")
         e.blink_cfg.enabled = on
         e.log("blink", f"Experimental blink-to-reject {'enabled' if on else 'disabled'}")
+    elif action in ("set_interaction_mode", "set_input_mode"):
+        mode = str(p["mode"])
+        if action == "set_input_mode" and mode not in ("eeg_only", "auto") \
+                and mode not in e.contract_v2()["input"]["modes_available"]:
+            raise ValueError(f"mode {mode} not available: {e.interaction['reason']}")
+        e.set_interaction_mode(mode)
+    elif action in ("set_gestures_enabled", "set_gesture_enabled"):
+        e.set_gestures_enabled(bool(p["on"]))  # v1.4: one switch for all usable gestures
+    elif action == "start_gesture_calibration":
+        e.start_gesture_calibration(int(p.get("cues_per_gesture", 6)))
+    elif action == "optimise_policy":
+        e.request_policy()
     elif action == "record_start":
         return {"path": e.start_recording(p.get("notes", ""))}
     elif action == "record_stop":
@@ -263,6 +303,8 @@ def dispatch(action: str, p: dict) -> dict | None:
         elif action == "sim_blink":
             sim.inject_blink(bool(p.get("deliberate", True)))
             e.log("sim", f"Injected {'deliberate' if p.get('deliberate', True) else 'natural'} blink")
+        elif action == "sim_eyes_closed":
+            sim.eyes_closed = bool(p.get("on", True))
         elif action == "sim_noise":
             sim.noise_multiplier = float(p["multiplier"])
         elif action == "sim_ssvep":
@@ -274,6 +316,24 @@ def dispatch(action: str, p: dict) -> dict | None:
             e.log("sim", "Simulated Bluetooth dropout" if sim.disconnected else "Simulated link restored")
         elif action == "sim_drop":
             sim.drop_probability = float(p["p"])
+        elif action == "sim_gesture":
+            k = p.get("kind") or p.get("gesture")
+            sim.perform_gesture(k)
+            e.log("sim", f"Virtual patient head movement: {k}")
+        elif action == "sim_capability":
+            prof = {"no_movement": "no_head_control", "reliable_movement": "accurate",
+                    "unreliable_movement": "unreliable"}.get(p["profile"], p["profile"])
+            sim.set_motion_profile(prof)
+            e.log("sim", f"Virtual patient motion profile: {prof}")
+        elif action == "sim_motion_profile":
+            sim.set_motion_profile(str(p["profile"]))
+            e.log("sim", f"Virtual patient motion profile: {p['profile']}")
+        elif action == "sim_imu_fault":
+            f = p.get("fault")
+            if f not in (None, "nan", "frozen"):
+                raise ValueError("fault must be null, 'nan' or 'frozen'")
+            sim.head.fault = f
+            e.log("sim", f"Simulated motion-sensor fault: {f or 'none'}")
         else:
             raise ValueError(f"unknown action {action}")
     else:

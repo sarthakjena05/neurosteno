@@ -31,18 +31,38 @@ class SessionRecorder:
         self.markers: list[dict] = []
         self.notes = notes
         self.started = time.time()
+        self._chunks: list[np.ndarray] = []
+        self._pos = self.start_sample
+        self.lost_samples = 0
+
+    def flush(self) -> None:
+        """Copy new samples out of the ring buffer. Call regularly (the engine does every tick):
+        the source only retains ~2 min, so a long session read only at save() would be cut."""
+        total = self.source.total_samples
+        if total <= self._pos:
+            return
+        data = self.source.read_range(self._pos, total)
+        lost = (total - self._pos) - data.shape[0]
+        if lost > 0:  # overran the ring buffer: keep markers aligned with NaN rows
+            self.lost_samples += lost
+            self._chunks.append(np.full((lost, data.shape[1]), np.nan, dtype=np.float32))
+        self._chunks.append(data.astype(np.float32))
+        self._pos = total
 
     def mark(self, event: str, **fields) -> None:
         self.markers.append({"sample": self.source.total_samples - self.start_sample, "event": event, **fields})
 
     def save(self) -> dict:
-        data = self.source.read_range(self.start_sample, self.source.total_samples)
+        self.flush()
+        n_ch = len(self.source.channels)
+        data = np.concatenate(self._chunks) if self._chunks else np.zeros((0, n_ch), dtype=np.float32)
         meta = {
             "origin": self.source.kind.value,
             "device": self.source.status.device,
             "created": self.started,
             "duration_s": data.shape[0] / self.source.sample_rate,
             "notes": self.notes,
+            "lost_samples": self.lost_samples,
         }
         if self.source.kind == SourceKind.REPLAY:
             meta["origin"] = self.source.status.extra.get("origin", "replay")

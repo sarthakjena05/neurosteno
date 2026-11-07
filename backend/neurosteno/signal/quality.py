@@ -51,7 +51,7 @@ def common_mode(window: np.ndarray, fs: float) -> float | None:
     xf = sosfiltfilt(_bp(fs, 1.0, 40.0), x, axis=0)
     if np.any(xf.std(axis=0) < 1e-6):
         return None
-    c = np.corrcoef(xf.T)
+    c = np.abs(np.corrcoef(xf.T))  # sign-flipped copies of one signal are also common-mode
     k = c.shape[0]
     return float((c.sum() - k) / (k * k - k))
 

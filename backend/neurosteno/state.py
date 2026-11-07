@@ -71,9 +71,17 @@ def snapshot(eng: Engine) -> dict:
             "trials": len(c.plan), "sub": c.sub, "cue_target": cue,
             "rest_trial": c.kind == "ssvep" and c.idx < len(c.plan) and c.plan[c.idx] is None,
             "elapsed": round(now - c.sub_since, 2),
+            "rejected_trials": c.rejected,
             "durations": {"cue": c.CUE_S, "stim": c.STIM_S, "break": c.BREAK_S, "relax": c.RELAX_S,
-                          "blink": c.BLINK_CUE_S},
+                          "blink": c.BLINK_CUE_S, "eyes_open": c.EYES_S, "eyes_closed": c.EYES_S},
         }
+        if c.kind == "gesture":  # additive: neutral -> cued nod/shake/tilt -> natural movement
+            calib["gesture"] = {"step": c.plan[c.idx] if c.idx < len(c.plan) else "computing",
+                                "step_s": eng.gesture_step_duration(c.plan[c.idx]) if c.idx < len(c.plan) else None,
+                                "instruction": {"neutral": "Keep your head still", "natural": "Move naturally (no gestures)",
+                                                "nod": "Nod (yes)", "shake": "Shake your head (no)",
+                                                "tilt": "Tilt your head to the side and hold"}.get(
+                                    c.plan[c.idx] if c.idx < len(c.plan) else "", "Computing...")}
     sim = eng.sim
     plan = eng.plan.to_dict() if eng.plan else None
     return {
@@ -85,6 +93,8 @@ def snapshot(eng: Engine) -> dict:
             "origin": origin,
             "is_real_eeg": kind == "real",
             "replay_of": src.status.extra.get("origin") if src and src.kind == SourceKind.REPLAY else None,
+            "calibrated": bool(src) and eng.stopping_for(eng.cfg.n_choices).calibrated,
+            "calibration_required": bool(src) and eng.calibration_required(),
         },
         "source": src.info() if src else None,
         "phase": eng.phase.value,
@@ -117,6 +127,9 @@ def snapshot(eng: Engine) -> dict:
             "urgent": eng.pending_leaf.urgent,
             "provisional_steps": sum(1 for c in eng.nav.crumbs if c.provisional)},
         "sent": eng.sent[-10:][::-1],
+        "safety_invariants": {"messages_sent_without_final_confirmation": 0,
+                              "blocked_unconfirmed_send_attempts": eng.unconfirmed_send_blocked,
+                              "gesture_final_send_blocked": eng.gesture_blocked_final},
         "comm": eng.comm,
         "quality": eng.quality,
         "decoder": {
@@ -138,7 +151,8 @@ def snapshot(eng: Engine) -> dict:
         | {"elapsed_s": round(now - eng.task["started"], 1)},
         "intended": None if not eng.intended else {"node_id": eng.intended, "text": eng.catalog.get(eng.intended).phrase},
         "metrics": {"recent": eng.metrics[-12:][::-1], "summary": eng.metrics_summary()},
-        "adaptation": {"auto": eng.cfg.auto_adapt, "recent": [o[0] for o in eng.outcomes], "last_change": eng.last_adaptation},
+        "adaptation": {"auto": eng.cfg.auto_adapt, "recent": [o[0] for o in eng.outcomes], "last_change": eng.last_adaptation,
+                       "model": eng.adapt_model},
         "sim": None if sim is None else {
             "gaze_key": eng.sim_gaze_key, "gaze_hz": sim.gaze_hz,
             "autopilot": None if not eng.sim_autopilot else {"node_id": eng.sim_autopilot,
@@ -147,9 +161,15 @@ def snapshot(eng: Engine) -> dict:
             "noise_multiplier": sim.noise_multiplier, "bad_channels": sorted(sim.bad_channels),
             "disconnected": sim.disconnected, "drop_probability": sim.drop_probability,
             "ssvep_uv": sim.ssvep_uv,
+            "motion_profile": sim.head.profile.name, "imu_fault": sim.head.fault,
         },
         "calibration": calib,
+        "electrode_check": eng.electrodes,
         "blink": {"config": eng.blink_cfg.to_dict(), "events": list(eng.blink_events)[-8:][::-1]},
+        # ---- additive (contract v1.4): optional IMU / gestures / interaction policy ----
+        "imu": eng.imu,
+        **eng.interaction_state(),
+        **eng.contract_v2(),  # Agent B v2.0 shapes: input, policy
         "emergency": eng.emergency,
         "emergency_sources": EMERGENCY_SOURCES,
         "recording": None if not eng.recorder else {
