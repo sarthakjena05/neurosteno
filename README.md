@@ -101,6 +101,25 @@ The first SciPy import after install can take 30–90 s while Windows Defender s
 Or build once (`cd frontend; npm run build`) and use only the backend at http://127.0.0.1:8000.
 Patient-only fullscreen view: append `#patient` to the URL.
 
+## Real-EEG signal check (electrodes + alpha)
+
+After the hardware test streams, check that the data is **brain signal**, not just bytes:
+
+```powershell
+cd C:\Users\sarth\neurosteno\backend
+.\.venv\Scripts\python scripts\real_signal_check.py --serial UN-2024.09.36
+```
+1. **Electrode fitting** (60 s, Ctrl+C to skip): a live per-electrode table showing contact verdict,
+   1–40 Hz amplitude, drift, |correlation| with other channels, mains, and EMG, plus a fix for each problem.
+   UnicornPy exposes no impedance, so contact is estimated heuristically from the signal itself.
+2. **Alpha check** (3 × eyes open 10 s / eyes closed 10 s, beep cues): occipital alpha must rise with
+   eyes closed (ratio ≥ 1.5, epoch AUC ≥ 0.8, in every cycle) before we report `eeg_confirmed`.
+   Identical channels (ear clips off) are reported as `invalid`, never as EEG.
+3. Saves `recordings/real_signal_check_<time>.npz` (+ `.json` report) for REPLAY mode.
+
+`--sim` dry-runs the flow on synthetic data (clearly labelled). The same checks run live in the
+backend (`electrode_check` in the state, `start_alpha_check` command).
+
 ## Hardware test (real headset)
 
 Close Unicorn Recorder and other g.tec apps that might hold the headset (the Unicorn Suite
@@ -125,7 +144,7 @@ currently shows a driver error in Device Manager.
 ## Tests
 
 ```powershell
-cd backend;  .\.venv\Scripts\python -m pytest -q      # 50 tests, ~40 s
+cd backend;  .\.venv\Scripts\python -m pytest -q      # 60 tests, ~25 s
 cd frontend; npm test                                   # 13 tests
 ```
 Covered: catalog quality (≥1,000 unique phrases), reachability of every phrase for 2/3/5 targets ×

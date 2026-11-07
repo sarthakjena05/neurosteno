@@ -230,6 +230,8 @@ def dispatch(action: str, p: dict) -> dict | None:
         e.start_calibration(int(p.get("n", 2)), int(p.get("trials_per_target", 5)), int(p.get("rest_trials", 4)))
     elif action == "start_blink_calibration":
         e.start_blink_calibration(int(p.get("cues", 8)))
+    elif action == "start_alpha_check":
+        e.start_alpha_check(int(p.get("cycles", 2)))
     elif action == "cancel_calibration":
         e.cancel_calibration()
     elif action == "set_blink_enabled":
@@ -263,6 +265,8 @@ def dispatch(action: str, p: dict) -> dict | None:
         elif action == "sim_blink":
             sim.inject_blink(bool(p.get("deliberate", True)))
             e.log("sim", f"Injected {'deliberate' if p.get('deliberate', True) else 'natural'} blink")
+        elif action == "sim_eyes_closed":
+            sim.eyes_closed = bool(p.get("on", True))
         elif action == "sim_noise":
             sim.noise_multiplier = float(p["multiplier"])
         elif action == "sim_ssvep":

@@ -72,7 +72,7 @@ def snapshot(eng: Engine) -> dict:
             "rest_trial": c.kind == "ssvep" and c.idx < len(c.plan) and c.plan[c.idx] is None,
             "elapsed": round(now - c.sub_since, 2),
             "durations": {"cue": c.CUE_S, "stim": c.STIM_S, "break": c.BREAK_S, "relax": c.RELAX_S,
-                          "blink": c.BLINK_CUE_S},
+                          "blink": c.BLINK_CUE_S, "eyes_open": c.EYES_S, "eyes_closed": c.EYES_S},
         }
     sim = eng.sim
     plan = eng.plan.to_dict() if eng.plan else None
@@ -149,6 +149,7 @@ def snapshot(eng: Engine) -> dict:
             "ssvep_uv": sim.ssvep_uv,
         },
         "calibration": calib,
+        "electrode_check": eng.electrodes,
         "blink": {"config": eng.blink_cfg.to_dict(), "events": list(eng.blink_events)[-8:][::-1]},
         "emergency": eng.emergency,
         "emergency_sources": EMERGENCY_SOURCES,

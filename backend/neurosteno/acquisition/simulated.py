@@ -62,6 +62,7 @@ class SimulatedSource(EEGSource):
         self.noise_multiplier = 1.0
         self.bad_channels: set[str] = set()  # electrode labels with simulated poor contact
         self.disconnected = False  # simulate a Bluetooth drop: no samples arrive
+        self.eyes_closed = False  # posterior alpha rises ~4x in power (Berger effect)
         self.drop_probability = 0.0  # per-block probability of a simulated packet loss
         # Internal state
         self._eeg_idx = [c.index for c in self.channels if c.kind == "eeg"]
@@ -150,7 +151,8 @@ class SimulatedSource(EEGSource):
 
         # Alpha (posterior, amplitude-modulated) and line noise
         alpha_env = 0.6 + 0.4 * np.sin(2 * np.pi * 0.1 * t)
-        eeg += np.outer(np.sin(2 * np.pi * 10.2 * t) * alpha_env, self._ssvep_w) * self.alpha_uv
+        alpha_gain = 3.0 if self.eyes_closed else 1.0
+        eeg += np.outer(np.sin(2 * np.pi * 10.2 * t) * alpha_env, self._ssvep_w) * self.alpha_uv * alpha_gain
         eeg += np.sin(2 * np.pi * 60.0 * t)[:, None] * self.line_noise_uv * self.noise_multiplier
 
         # SSVEP response to the target the virtual patient is looking at

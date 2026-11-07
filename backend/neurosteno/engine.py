@@ -43,6 +43,8 @@ from .routing import RoutingPlan, plan_routing
 from .signal.blink import BlinkConfig, OnlineBlinkDetector, calibrate_blinks
 from .signal.calibration import Trial, calibrate
 from .signal.fbcca import DynamicStopper, FBCCAConfig, StoppingConfig
+from .signal.electrodes import (ElectrodeConfig, alpha_reactivity, channel_contacts, channel_spectra,
+                                summarize_contacts)
 from .signal.quality import QualityConfig, assess_channels, common_mode
 
 log = logging.getLogger(__name__)
@@ -82,7 +84,7 @@ class Attempt:
 
 @dataclass
 class CalibSession:
-    kind: str  # "ssvep" | "blink"
+    kind: str  # "ssvep" | "blink" | "alpha"
     n: int = 2
     freqs: list[float] = field(default_factory=list)
     plan: list = field(default_factory=list)  # ssvep: label|None per trial ; blink: "relax" then "blink" cues
@@ -101,6 +103,7 @@ class CalibSession:
     BREAK_S = 1.0
     RELAX_S = 20.0
     BLINK_CUE_S = 2.5
+    EYES_S = 10.0
 
 
 class Engine:
@@ -131,6 +134,9 @@ class Engine:
         self._good_since: float | None = None
         self.quality: dict = {}
         self._last_quality = 0.0
+        self.ecfg = ElectrodeConfig(line_hz=self.qcfg.line_hz)
+        self.electrodes: dict | None = None
+        self._last_electrodes = 0.0
         self.blink_cfg = BlinkConfig(channel_labels=list(self.cfg.blink_labels))
         self.blink_detector: OnlineBlinkDetector | None = None
         self.blink_events: deque = deque(maxlen=20)
@@ -300,7 +306,13 @@ class Engine:
         self._calib_path().write_text(json.dumps(self.calib_results, indent=1), encoding="utf-8")
 
     def stopping_for(self, n: int) -> StoppingConfig:
-        return self.stopping.get(n) or StoppingConfig()
+        """Calibrated thresholds apply only to the data origin they were measured on: a
+        simulated calibration must never unlock REAL mode (and vice versa)."""
+        st = self.stopping.get(n)
+        res = self.calib_results.get(f"ssvep_{n}")
+        if st is not None and res and res.get("origin") == self.source_origin():
+            return st
+        return StoppingConfig()
 
     def allowed_choices(self) -> list[int]:
         if self.source is None or self.source.kind == SourceKind.SIMULATED:
@@ -334,6 +346,7 @@ class Engine:
         self.calib = None
         self.source = src
         self.quality = {}
+        self.electrodes = None
         self.sim_gaze_key = None
         self.sim_autopilot = None
         self.sim_pending_mistake = False
@@ -373,9 +386,13 @@ class Engine:
         src = self.source
         if src is not None:
             src.poll()
+            if self.recorder is not None:
+                self.recorder.flush()
             if now - self._last_quality >= 0.25:
                 self._update_quality(now)
                 self._update_blinks()  # 4 Hz is plenty; the detector looks back over 3 s
+            if now - self._last_electrodes >= 1.0:
+                self._update_electrodes(now)
         if self.emergency:
             return
         if self.calib is not None:
@@ -443,6 +460,28 @@ class Engine:
                        "before communicating (default thresholds come from synthetic data).")
         self.quality["problem"] = problem
         self.quality["signal_ok"] = problem is None
+
+    def _update_electrodes(self, now: float) -> None:
+        """Per-electrode contact diagnostics + spectra over the last 4 s (1 Hz). Advisory: the
+        communication gate stays in _update_quality."""
+        self._last_electrodes = now
+        src = self.source
+        fs = src.sample_rate
+        cols = self._eeg_cols()
+        if not cols:
+            self.electrodes = None
+            return
+        labels = [c.label or c.name for c in src.eeg_channels]
+        total = src.total_samples
+        win = src.read_range(max(0, total - int(4 * fs)), total)[:, cols]
+        contacts = channel_contacts(win, fs, labels, self.ecfg)
+        self.electrodes = {
+            "window_s": round(win.shape[0] / fs, 2),
+            "channels": contacts,
+            "summary": summarize_contacts(contacts, self.cfg.decoding_labels),
+            "spectra": channel_spectra(win, fs, labels),
+            "note": "Heuristic contact estimate from the signal itself; UnicornPy exposes no impedance.",
+        }
 
     def _check_comm(self, now: float) -> None:
         if self.source is None:
@@ -811,12 +850,26 @@ class Engine:
         self._enter(Phase.CALIBRATING)
         self.log("calibration", "Blink calibration started (experimental)")
 
+    def start_alpha_check(self, cycles: int = 2) -> None:
+        """Guided eyes-open / eyes-closed check (Berger effect): proves physiological EEG is
+        being recorded, independent of the stimulus display and of SSVEP."""
+        if self.source is None:
+            raise ValueError("Select an EEG source first")
+        self._cancel_attempt()
+        plan = ["eyes_open", "eyes_closed"] * max(1, int(cycles))
+        self.calib = CalibSession("alpha", plan=plan, sub=plan[0], sub_since=self.clock(),
+                                  stim_start=self.source.total_samples)
+        self._enter(Phase.CALIBRATING)
+        self._mark("alpha_segment", label=plan[0])
+        self.log("calibration", f"Eyes-open/eyes-closed alpha check started ({len(plan)} x {CalibSession.EYES_S:.0f} s)")
+
     def cancel_calibration(self) -> None:
         if self.calib:
             self.log("calibration", "Calibration cancelled")
         self.calib = None
         if self.sim:
             self.sim.set_gaze(None)
+            self.sim.eyes_closed = False
         self._enter_comm_unavailable("Re-checking signal after calibration", needs_caregiver=False)
 
     def _tick_calibration(self, now: float) -> None:
@@ -860,6 +913,24 @@ class Engine:
                                                      1.0, CalibSession.STIM_S - self.fbcca.latency_s - 0.1, 0.25)
                 else:
                     c.sub, c.sub_since = "cue", now
+        elif c.kind == "alpha":
+            if c.sub in ("eyes_open", "eyes_closed") and elapsed >= c.EYES_S:
+                cols = self._eeg_cols()
+                c.windows.append((c.sub, src.read_range(c.stim_start, src.total_samples)[:, cols].astype(np.float64)))
+                c.idx += 1
+                if c.idx >= len(c.plan):
+                    if self.sim:
+                        self.sim.eyes_closed = False
+                    c.sub = "computing"
+                    labels = [ch.label or ch.name for ch in src.eeg_channels]
+                    c.future = self._executor.submit(
+                        alpha_reactivity, [w for k, w in c.windows if k == "eyes_open"],
+                        [w for k, w in c.windows if k == "eyes_closed"], fs, labels, self.ecfg)
+                else:
+                    c.sub, c.sub_since, c.stim_start = c.plan[c.idx], now, src.total_samples
+                    self._mark("alpha_segment", label=c.sub)
+            if self.sim:
+                self.sim.eyes_closed = c.sub == "eyes_closed"
         else:  # blink
             cols = self._eeg_cols(self.blink_cfg.channel_labels)
             if c.sub == "relax":
@@ -900,6 +971,9 @@ class Engine:
             self.log("calibration", f"{c.n}-target calibration ({res['origin']} data): accepted-trial accuracy "
                      f"{est['accuracy_of_accepted']}, abstention {est['abstention_rate']}, "
                      f"mean {est['mean_decision_s']} s, supported={res['supported']}. {res['caveat']}")
+        elif c.kind == "alpha":
+            key = "alpha"
+            self.log("calibration", f"Alpha check ({res['origin']} data): {res['verdict']}. {res['note']}")
         else:
             key = "blink"
             if res["separable"]:
