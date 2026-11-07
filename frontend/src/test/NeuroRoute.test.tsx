@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import DemoGuide from '../components/DemoGuide'
 import { DEMO_STEPS, DEMO_TOTAL_S } from '../demoSteps'
@@ -165,11 +165,12 @@ describe('judge demo guide', () => {
   it('fits the five-minute slot with time to spare', () => {
     const total = DEMO_STEPS.reduce((a, d) => a + d.budget_s, 0)
     expect(total).toBeLessThanOrEqual(DEMO_TOTAL_S)
-    expect(DEMO_STEPS.map((d) => d.id)).toEqual(['honesty', 'home', 'select', 'confirm', 'context', 'failure', 'safety', 'hardware'])
+    expect(DEMO_STEPS.map((d) => d.id)).toEqual(['novelty', 'honesty', 'home', 'select', 'confirm', 'context', 'failure', 'safety', 'hardware'])
   })
 
   it('step buttons send ordinary contract commands', async () => {
     render(<DemoGuide s={mockState()} onGoTab={() => {}} />)
+    fireEvent.click(screen.getByText('Next →')) // step 1 is the comparison view
     fireEvent.click(screen.getByText('Switch to Simulated'))
     fireEvent.click(screen.getByText('Next →'))
     fireEvent.click(screen.getByText('2 choices'))
@@ -190,8 +191,12 @@ describe('judge demo guide', () => {
 
   it('ticks a step only from the live snapshot', () => {
     render(<DemoGuide s={mockState()} onGoTab={() => {}} />)
+    fireEvent.click(screen.getByText('Next →'))
     expect(screen.getByLabelText('live condition met')).toBeInTheDocument() // simulated mode in the mock
+    cleanup()
+    try { localStorage.clear() } catch { /* storage unavailable */ }
     const { container } = render(<DemoGuide s={mockState({ mode: REAL })} onGoTab={() => {}} />)
+    fireEvent.click(within(container).getByText('Next →'))
     expect(within(container).queryByLabelText('live condition met')).toBeNull()
   })
 })

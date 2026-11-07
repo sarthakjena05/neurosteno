@@ -14,6 +14,9 @@
   --color-real: #16a34a;
   --color-sim: #8b5cf6;
   --color-replay: #f59e0b;
+  /* Comparison series (validated with dataviz validate_palette.js on #141b2e: CVD dE 26.8, all pass) */
+  --color-fixed: #d95926;
+  --color-neuro: #3987e5;
 }
 
 html, body, #root { height: 100%; }

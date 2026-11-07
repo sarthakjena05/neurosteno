@@ -13,11 +13,18 @@ export interface DemoAction { label: string; run: () => Promise<unknown>; tone?:
 export interface DemoStep {
   id: string; title: string; budget_s: number; say: string[]
   actions: DemoAction[]; done?: (s: State) => boolean; goTab?: string
+  /** Show an "Open Fixed menu vs NeuroSteno" button (the judge comparison view). */
+  openCompare?: boolean
 }
 
 const sim = (action: string, params: Record<string, unknown> = {}) => () => command(action, params)
 
 export const DEMO_STEPS: DemoStep[] = [
+  {
+    id: 'novelty', title: 'The idea in 30 seconds', budget_s: 30, openCompare: true,
+    say: ['Open “Fixed menu vs NeuroSteno”. Read the two big numbers: same message, same patient (default: Jordan, “Turn me left”, 2 targets), traditional fixed menu vs NeuroSteno brain selections (EXACT navigator count). Every step is still confirmed.', 'Click patient A: for a new patient the count is unchanged. NeuroSteno does not guess without evidence. Every number is tagged EXACT, ESTIMATE or MEASURED (with its data origin).'],
+    actions: [],
+  },
   {
     id: 'honesty', title: 'Honesty first', budget_s: 20,
     say: ['Point at the striped purple frame and the SIMULATED EEG badge.', 'REAL, SIMULATED and REPLAY always look different. REAL mode refuses to communicate until it has been calibrated on real data.'],
@@ -25,7 +32,7 @@ export const DEMO_STEPS: DemoStep[] = [
     done: (s) => s.mode.kind === 'simulated',
   },
   {
-    id: 'home', title: 'Home screen, 2 or 5 targets', budget_s: 20,
+    id: 'home', title: 'Home screen, 2 or 5 targets', budget_s: 15,
     say: ['“What do you need?” shows five large categories.', 'With 2 targets, the same five cards stay visible inside two semantic groups. All 1,474 phrases are reachable with 2, 3 or 5 targets (tested).'],
     actions: [
       { label: '2 choices', run: sim('set_choices', { n: 2 }) },
@@ -35,7 +42,7 @@ export const DEMO_STEPS: DemoStep[] = [
     done: (s) => s.screen.at_home,
   },
   {
-    id: 'select', title: 'Selection with correction', budget_s: 60,
+    id: 'select', title: 'Selection with correction', budget_s: 50,
     say: ['The virtual patient wants “Left leg: reposition”. FBCCA collects evidence, the choice is highlighted on the same screen, and YES confirms it.', 'Arm a wrong target: the wrong card lights up, the patient looks at NO, and the screen does not change.'],
     actions: [
       { label: 'Autopilot: left leg', run: sim('sim_autopilot', { node_id: 'pain/legs-feet/left-leg/reposition/skip' }) },
@@ -52,7 +59,7 @@ export const DEMO_STEPS: DemoStep[] = [
     goTab: 'Session',
   },
   {
-    id: 'context', title: 'Context: NeuroRoute', budget_s: 60,
+    id: 'context', title: 'Context: NeuroRoute', budget_s: 40,
     say: ['Jordan (mobility): ★ suggestions and “NeuroRoute:” reasons appear on cards; the strip shows expected selections vs. the static menu.', 'Compute A/B/C: “Turn me left” goes 11 → 5 for Jordan but is unchanged for a new patient. Sam: suction-now 8 → 6 through the always-on urgent route.'],
     actions: [
       { label: 'Profile: Jordan', run: sim('set_profile', { id: 'mobility' }) },
@@ -64,7 +71,7 @@ export const DEMO_STEPS: DemoStep[] = [
     goTab: 'Routing',
   },
   {
-    id: 'failure', title: 'Failure handling', budget_s: 40,
+    id: 'failure', title: 'Failure handling', budget_s: 35,
     say: ['Bluetooth dropout means communication is paused. This is not an alarm and nothing is selected.', 'Restore it and the system resumes. Mark Oz + PO7 bad and it pauses again, showing the reason.'],
     actions: [
       { label: 'Bluetooth dropout', run: sim('sim_disconnect', { on: true }), tone: 'bg-red-700' },
@@ -84,7 +91,7 @@ export const DEMO_STEPS: DemoStep[] = [
     done: (s) => !!s.emergency,
   },
   {
-    id: 'hardware', title: 'Real hardware', budget_s: 30,
+    id: 'hardware', title: 'Real hardware', budget_s: 20,
     say: ['UN-2024.09.36 streamed 2500/2500 samples at 250 Hz over UnicornPy with 0 drops.', 'Signal tab: the electrode map (contact score is a signal heuristic, not impedance) and the eyes open/closed alpha check confirm brain activity before any decoding claim. The bring-up recording failed the plausibility check (all 8 channels identical: headset not on the scalp), so we make no claim about real classification yet.'],
     actions: [],
     goTab: 'Signal',

@@ -12,7 +12,7 @@ function loadStep(): number {
   try { return Number(localStorage.getItem('ns.demoStep') ?? 0) || 0 } catch { return 0 }
 }
 
-export default function DemoGuide({ s, onGoTab }: { s: State; onGoTab: (tab: string) => void }) {
+export default function DemoGuide({ s, onGoTab, onOpenCompare }: { s: State; onGoTab: (tab: string) => void; onOpenCompare?: () => void }) {
   const [step, setStep] = useState(loadStep)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
@@ -80,6 +80,7 @@ export default function DemoGuide({ s, onGoTab }: { s: State; onGoTab: (tab: str
         )}
         <div className="flex gap-2">
           <button type="button" disabled={step === 0} onClick={() => setStep(step - 1)} className="rounded-lg bg-panel2 px-3 py-1.5 text-sm disabled:opacity-40">← Prev</button>
+          {cur.openCompare && onOpenCompare && <button type="button" onClick={onOpenCompare} className="rounded-lg bg-neuro px-3 py-1.5 text-sm font-bold">Open Fixed menu vs NeuroSteno</button>}
           {cur.goTab && <button type="button" onClick={() => onGoTab(cur.goTab!)} className="rounded-lg bg-panel2 px-3 py-1.5 text-sm">Open {cur.goTab} tab</button>}
           <button type="button" disabled={step >= DEMO_STEPS.length - 1} onClick={() => setStep(step + 1)} className="ml-auto rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-semibold disabled:opacity-40">Next →</button>
         </div>
