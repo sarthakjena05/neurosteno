@@ -236,8 +236,9 @@ export function NeuroRouteStrip({ s }: { s: State }) {
   const freshChange = change && (change.time == null || s.server_time == null || s.server_time - change.time < 30)
   if (!p && !freshChange && !s.routing_pending) return null
   const adaptive = s.config.routing_mode === 'adaptive'
-  const sel = p?.expected.selections
-  const stat = p?.expected.static_selections
+  const r1 = (x: number | undefined) => (x == null ? undefined : Math.round(x * 10) / 10)
+  const sel = r1(p?.expected.selections)
+  const stat = r1(p?.expected.static_selections)
   const saved = sel != null && stat != null ? Math.round((stat - sel) * 10) / 10 : null
   return (
     <div data-testid="neuroroute-strip" className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel px-3 py-2 text-base">
