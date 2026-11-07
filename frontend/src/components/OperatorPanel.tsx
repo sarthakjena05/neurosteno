@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { command, get, post } from '../api'
+import DemoGuide from './DemoGuide'
 import { flicker } from '../flicker'
 import type { State } from '../types'
 
-const TABS = ['Session', 'Simulation', 'Signal', 'Calibration', 'Routing', 'Metrics', 'Log'] as const
+const TABS = ['Demo', 'Session', 'Simulation', 'Signal', 'Calibration', 'Routing', 'Metrics', 'Log'] as const
 type Tab = (typeof TABS)[number]
 
 function Btn({ children, onClick, active, disabled, tone, title }: { children: React.ReactNode; onClick: () => void; active?: boolean; disabled?: boolean; tone?: string; title?: string }) {
@@ -40,7 +41,7 @@ function PhrasePicker({ onPick, placeholder }: { onPick: (id: string) => void; p
   }, [q])
   return (
     <div className="flex flex-col gap-1">
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder}
+      <input aria-label={placeholder} value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder}
         className="rounded-lg border border-line bg-ink px-2 py-1.5 text-sm" />
       {res.map((r) => (
         <button key={r.node_id} type="button" onClick={() => { onPick(r.node_id); setQ(''); setRes([]) }}
@@ -77,7 +78,7 @@ function SessionTab({ s }: { s: State }) {
       <Section title="EEG source">
         <div className="flex flex-wrap gap-2">
           <Btn active={s.mode.kind === 'simulated'} onClick={() => run(post('/api/mode', { mode: 'simulated' }))}>Simulated</Btn>
-          <Btn active={s.mode.kind === 'off' as string} onClick={() => run(post('/api/mode', { mode: 'off' }))}>Off</Btn>
+          <Btn active={s.mode.kind === 'none'} onClick={() => run(post('/api/mode', { mode: 'off' }))}>Off</Btn>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Btn onClick={() => run(get('/api/hardware').then(setHw))}>Hardware check</Btn>
@@ -97,7 +98,7 @@ function SessionTab({ s }: { s: State }) {
         {s.source?.status.error && <p className="rounded bg-red-900 p-2 text-sm">{s.source.status.error}</p>}
       </Section>
       <Section title="Patient profile (synthetic)">
-        <select value={s.profile.id} onChange={(e) => run(command('set_profile', { id: e.target.value }))} className="rounded-lg border border-line bg-ink px-2 py-1.5">
+        <select aria-label="Patient profile" value={s.profile.id} onChange={(e) => run(command('set_profile', { id: e.target.value }))} className="rounded-lg border border-line bg-ink px-2 py-1.5">
           {profiles.map((p) => <option key={p.id} value={p.id}>{p.display_name}</option>)}
         </select>
         <p className="text-xs text-muted">{s.profile.summary}</p>
@@ -373,17 +374,34 @@ function LogTab({ s }: { s: State }) {
 }
 
 export default function OperatorPanel({ s }: { s: State }) {
-  const [tab, setTab] = useState<Tab>('Session')
+  const [tab, setTab] = useState<Tab>('Demo')
+  const goTab = (t: string) => { if ((TABS as readonly string[]).includes(t)) setTab(t as Tab) }
+  // WAI-ARIA tabs pattern: arrow keys / Home / End move between tabs.
+  const onTabKey = (e: React.KeyboardEvent<HTMLButtonElement>, i: number) => {
+    const j = e.key === 'ArrowRight' ? (i + 1) % TABS.length : e.key === 'ArrowLeft' ? (i - 1 + TABS.length) % TABS.length
+      : e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : -1
+    if (j < 0) return
+    e.preventDefault()
+    setTab(TABS[j])
+    document.getElementById(`optab-${TABS[j]}`)?.focus()
+  }
   return (
     <aside className="flex h-full flex-col gap-2 overflow-hidden rounded-3xl border border-line bg-panel p-3" aria-label="Operator and caregiver panel">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-black">Operator panel</h2>
         <span className="text-xs text-muted">phase {s.phase} · {s.vocabulary.phrases} phrases</span>
       </div>
-      <div className="flex flex-wrap gap-1" role="tablist">
-        {TABS.map((t) => <Btn key={t} active={tab === t} onClick={() => setTab(t)}>{t}</Btn>)}
+      <div className="flex flex-wrap gap-1" role="tablist" aria-label="Operator panel sections">
+        {TABS.map((t, i) => (
+          <button key={t} id={`optab-${t}`} type="button" role="tab" aria-selected={tab === t} aria-controls="optab-panel"
+            tabIndex={tab === t ? 0 : -1} onClick={() => setTab(t)} onKeyDown={(e) => onTabKey(e, i)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${tab === t ? 'bg-sky-600' : 'bg-panel2 hover:bg-line'}`}>
+            {t}
+          </button>
+        ))}
       </div>
-      <div className="flex-1 overflow-y-auto pr-1">
+      <div id="optab-panel" role="tabpanel" aria-labelledby={`optab-${tab}`} tabIndex={0} className="flex-1 overflow-y-auto pr-1">
+        {tab === 'Demo' && <DemoGuide s={s} onGoTab={goTab} />}
         {tab === 'Session' && <SessionTab s={s} />}
         {tab === 'Simulation' && <SimulationTab s={s} />}
         {tab === 'Signal' && <SignalTab s={s} />}

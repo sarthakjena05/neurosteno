@@ -42,7 +42,10 @@ export interface LogEvent { time: number; kind: string; text: string }
 
 export interface State {
   version: number
-  mode: { kind: 'real' | 'simulated' | 'replay' | 'none'; label: string; origin: string; is_real_eeg: boolean; replay_of: string | null }
+  server_time?: number
+  mode: { kind: 'real' | 'simulated' | 'replay' | 'none'; label: string; origin: string; is_real_eeg: boolean; replay_of: string | null
+    /** Requested from Agent A (R1); optional until the backend sends it. */
+    calibrated?: boolean }
   source: null | {
     kind: string; sample_rate: number
     channels: { index: number; name: string; kind: string; unit: string; label: string }[]
@@ -78,7 +81,7 @@ export interface State {
   task: null | (Record<string, unknown> & { elapsed_s: number; selections: number; rejected_predictions: number })
   intended: null | { node_id: string; text: string }
   metrics: { recent: Metric[]; summary: Record<string, unknown>[] }
-  adaptation: { auto: boolean; recent: string[]; last_change: null | { from: number; to: number; reason: string } }
+  adaptation: { auto: boolean; recent: string[]; last_change: null | { from: number; to: number; reason: string; time?: number } }
   sim: null | { gaze_key: string | null; gaze_hz: number | null; autopilot: null | { node_id: string; text: string }
     pending_mistake: boolean; mistake_rate: number; noise_multiplier: number; bad_channels: string[]
     disconnected: boolean; drop_probability: number; ssvep_uv: number }

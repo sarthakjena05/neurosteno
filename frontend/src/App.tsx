@@ -33,11 +33,11 @@ export default function App() {
           <OperatorPanel s={state} />
         </div>
       )}
-      <button type="button" onClick={() => setShowPanel((v) => !v)}
+      <button type="button" aria-expanded={showPanel} onClick={() => setShowPanel((v) => !v)}
         className="fixed bottom-3 right-3 z-50 rounded-full bg-panel2 px-3 py-1 text-xs text-muted opacity-70 hover:opacity-100">
         {showPanel ? 'Hide' : 'Show'} operator panel
       </button>
-      {!connected && <div className="fixed left-1/2 top-2 z-50 -translate-x-1/2 rounded bg-red-700 px-3 py-1 text-sm">Backend disconnected: reconnecting…</div>}
+      {!connected && <div role="status" className="fixed left-1/2 top-2 z-50 -translate-x-1/2 rounded bg-red-700 px-3 py-1 text-sm">Backend disconnected: reconnecting…</div>}
     </main>
   )
 }

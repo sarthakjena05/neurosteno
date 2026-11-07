@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { command } from '../api'
 import { flicker, type Stim } from '../flicker'
+import { calibratedForCurrent, MODE_FRAME, modeCaption, originLabel } from '../mode'
 import type { Slot, State, Target } from '../types'
 
 const ICONS: Record<string, string> = {
@@ -25,7 +26,7 @@ export function phaseText(s: State): string {
     case 'OFF': return 'No EEG source connected'
     case 'IDLE': return s.feedback?.type === 'no_control' ? 'Standing by. Look at a choice when you are ready.' : 'Get ready…'
     case 'EVIDENCE_COLLECTION': return 'Listening. Look at the choice you want.'
-    case 'PREDICTION_HIGHLIGHTED': return 'Is the highlighted choice right? Look at YES or NO.'
+    case 'PREDICTION_HIGHLIGHTED': return s.highlight ? `Did you mean “${s.highlight.label}”? Look at YES or NO.` : 'Is the highlighted choice right? Look at YES or NO.'
     case 'ACCEPTED': return 'Accepted.'
     case 'REJECTED': return s.feedback?.type === 'not_confirmed' ? 'Not confirmed. Nothing was selected.' : 'Rejected. Same screen, try again.'
     case 'ABSTAINED': return 'Not sure what you chose. Let’s try again.'
@@ -134,6 +135,11 @@ function SlotCard({ s, slot }: { s: State; slot: Slot }) {
           ))}
         </div>
       )}
+      {slot.suggest_reasons.length > 0 && (
+        <p data-testid={`why-${slot.index}`} className="relative z-10 mt-2 self-start rounded-lg bg-sky-950/85 px-2 py-1 text-sm text-sky-100">
+          <span className="font-bold">NeuroRoute:</span> {slot.suggest_reasons.join(' · ')}
+        </p>
+      )}
     </button>
   )
 }
@@ -162,9 +168,13 @@ function Evidence({ s }: { s: State }) {
   const a = s.attempt
   if (!a) return <div className="h-3" />
   const frac = Math.min(1, a.elapsed_s / (a.max_window_s + 0.3))
+  // Deliberately NOT aria-live: this updates ~10x per second and would flood screen readers.
+  // The phase sentence above carries the announcements.
   return (
-    <div className="flex items-center gap-3" aria-live="polite">
-      <div className="h-3 flex-1 overflow-hidden rounded-full bg-panel2">
+    <div className="flex items-center gap-3">
+      <div className="h-3 flex-1 overflow-hidden rounded-full bg-panel2" role="progressbar" data-testid="evidence"
+        aria-label={a.kind === 'choose' ? 'Evidence collected for this choice' : 'Evidence collected for the confirmation'}
+        aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(frac * 100)}>
         <div className="h-full bg-sky-400 transition-all" style={{ width: `${frac * 100}%` }} />
       </div>
       <span className="w-40 text-right text-sm text-muted">{a.kind === 'choose' ? 'collecting evidence' : 'checking'} {a.elapsed_s.toFixed(1)} s</span>
@@ -182,15 +192,81 @@ export function ModeBadge({ s }: { s: State }) {
   )
 }
 
-function Overlay({ children, tone = 'bg-black/85' }: { children: React.ReactNode; tone?: string }) {
-  return <div className={`absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 rounded-3xl p-8 text-center ${tone}`}>{children}</div>
+/** REAL mode only: whether the decoder may communicate on this data at the current target count. */
+export function CalibrationChip({ s }: { s: State }) {
+  if (s.mode.kind !== 'real') return null
+  const ok = calibratedForCurrent(s)
+  return (
+    <span data-testid="calib-chip" className={`rounded-xl px-3 py-2 text-base font-bold ${ok ? 'bg-green-900 text-green-100' : 'bg-amber-400 text-black'}`}>
+      {ok ? `✓ Calibrated for ${s.screen.n_choices} targets` : `⚠ Not calibrated for ${s.screen.n_choices} targets`}
+    </span>
+  )
+}
+
+function Overlay({ children, tone = 'bg-black/85', label, role = 'dialog', testId }: {
+  children: React.ReactNode; tone?: string; label: string; role?: 'dialog' | 'alertdialog' | 'status'; testId?: string
+}) {
+  return (
+    <div role={role} aria-modal={role === 'status' ? undefined : true} aria-label={label} data-testid={testId}
+      className={`absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 rounded-3xl p-8 text-center ${tone}`}>
+      {children}
+    </div>
+  )
+}
+
+/** Says which data origin produced a sent message, so a simulated message is never mistaken for a real one. */
+function SentOrigin({ s }: { s: State }) {
+  const origin = s.sent[0]?.data_origin ?? s.mode.origin
+  if (origin === 'real' && s.mode.kind === 'real') return null
+  return (
+    <p data-testid="sent-origin" className="rounded-xl bg-black/50 px-4 py-2 text-xl font-bold">
+      Produced from {originLabel(origin)}{s.mode.kind === 'replay' ? ' played back from a recording' : ''}. Not a live real-EEG message.
+    </p>
+  )
+}
+
+/**
+ * Compact, judge-visible summary of what risk-aware routing is doing right now.
+ * Everything here is read from the snapshot; context never changes decoder output.
+ */
+export function NeuroRouteStrip({ s }: { s: State }) {
+  const p = s.routing
+  const change = s.adaptation.last_change
+  // Server clock only (no Date.now() during render). Without a timestamp, show the latest change.
+  const freshChange = change && (change.time == null || s.server_time == null || s.server_time - change.time < 30)
+  if (!p && !freshChange && !s.routing_pending) return null
+  const adaptive = s.config.routing_mode === 'adaptive'
+  const sel = p?.expected.selections
+  const stat = p?.expected.static_selections
+  const saved = sel != null && stat != null ? Math.round((stat - sel) * 10) / 10 : null
+  return (
+    <div data-testid="neuroroute-strip" className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel px-3 py-2 text-base">
+      <span className={`rounded-lg px-2 py-0.5 font-black ${adaptive ? 'bg-sky-600' : 'bg-zinc-600'}`}>
+        {adaptive ? 'NeuroRoute · risk-aware' : 'Static menu (baseline)'}
+      </span>
+      {p && sel != null && (
+        <span className="text-muted">
+          ≈ <b className="text-text">{sel}</b> selections per message for {s.profile.display_name.split(' ')[0]}
+          {adaptive && stat != null && <> (static menu {stat}{saved != null && saved > 0 ? `, ${saved} fewer` : ''})</>}
+        </span>
+      )}
+      {p && adaptive && p.shortcuts.length > 0 && <span className="text-muted">· {p.shortcuts.length} shortcut{p.shortcuts.length === 1 ? '' : 's'}</span>}
+      {p && p.urgent.length > 0 && <span className="text-muted">· {p.urgent.length} urgent routes always on</span>}
+      {s.routing_pending && <span className="rounded-lg bg-amber-900 px-2 py-0.5 text-amber-100">Route update applies when you return Home</span>}
+      {freshChange && change && (
+        <span role="status" data-testid="adapt-notice" className="rounded-lg bg-sky-950 px-2 py-0.5 text-sky-100">
+          Now {change.to} choices per screen (was {change.from}): {change.reason}
+        </span>
+      )}
+    </div>
+  )
 }
 
 function CalibrationOverlay({ s }: { s: State }) {
   const c = s.calibration!
   if (c.kind === 'blink') {
     return (
-      <Overlay>
+      <Overlay label="Blink calibration">
         <h2 className="text-4xl font-black">Blink calibration (experimental)</h2>
         <p className="text-3xl">{c.sub === 'relax' ? 'Relax and look at the screen. Blink normally.' : c.sub === 'computing' ? 'Computing…' : 'BLINK FIRMLY NOW, once.'}</p>
         <p className="text-muted">Step {c.trial + 1} of {c.trials}</p>
@@ -214,7 +290,7 @@ function CalibrationTargets({ s }: { s: State }) {
   const c = s.calibration!
   const stim = c.sub === 'stim' || c.sub === 'cue'
   return (
-    <div className="absolute inset-0 z-30 flex flex-col gap-4 rounded-3xl bg-ink p-6">
+    <div role="dialog" aria-modal="true" aria-label="SSVEP calibration" className="absolute inset-0 z-30 flex flex-col gap-4 rounded-3xl bg-ink p-6">
       <div className="flex items-baseline justify-between">
         <h2 className="text-3xl font-black">SSVEP calibration · {c.n} targets</h2>
         <span className="text-xl text-muted">Trial {Math.min(c.trial + 1, c.trials)} / {c.trials}</span>
@@ -233,12 +309,17 @@ export default function PatientView({ s }: { s: State }) {
   const highlighted = s.phase === 'PREDICTION_HIGHLIGHTED'
   const review = s.phase === 'MESSAGE_REVIEW' && s.review
   return (
-    <section className="relative flex h-full flex-col gap-4 rounded-3xl border border-line bg-ink p-4 md:p-6" aria-label="Patient communication screen">
+    <section data-testid="patient-screen" data-mode={s.mode.kind}
+      className={`relative flex h-full flex-col gap-4 overflow-y-auto rounded-3xl border-[6px] bg-ink p-4 md:p-6 ${MODE_FRAME[s.mode.kind]}`}
+      aria-label={`Patient communication screen, ${s.mode.label}`}>
       <header className="flex flex-wrap items-center gap-3">
         <ModeBadge s={s} />
+        <CalibrationChip s={s} />
         <span className="text-lg text-muted">{s.screen.n_choices} choices · {s.config.effective_policy === 'provisional' ? 'provisional + correction window' : 'confirm every choice'}</span>
         <span className="ml-auto rounded-lg border border-line px-2 py-1 text-xs text-muted">Research prototype. Not a medical device.</span>
+        <p data-testid="mode-caption" className="w-full text-sm text-muted">{modeCaption(s)}</p>
       </header>
+      <NeuroRouteStrip s={s} />
 
       <nav aria-label="Where you are" className="flex flex-wrap items-center gap-2 text-xl">
         <span className="font-bold">Home</span>
@@ -279,7 +360,7 @@ export default function PatientView({ s }: { s: State }) {
       )}
 
       {review && (
-        <Overlay tone="bg-ink/95">
+        <Overlay tone="bg-ink/95" label="Review your message before sending" testId="review-overlay">
           <p className="text-2xl text-muted">Your message</p>
           <p data-testid="review-text" className={`max-w-4xl text-5xl font-black leading-tight ${s.review!.urgent ? 'text-red-300' : ''}`}>“{s.review!.text}”</p>
           {s.review!.provisional_steps > 0 && <p className="text-pending">{s.review!.provisional_steps} step(s) were accepted provisionally. Please check carefully.</p>}
@@ -291,13 +372,14 @@ export default function PatientView({ s }: { s: State }) {
         </Overlay>
       )}
       {s.phase === 'MESSAGE_SENT' && s.feedback && (
-        <Overlay tone="bg-green-950/95">
+        <Overlay tone="bg-green-950/95" label="Message sent" role="status" testId="sent-overlay">
           <p className="text-3xl">✓ Sent to your caregiver</p>
           <p className="max-w-4xl text-5xl font-black">“{s.feedback.label}”</p>
+          <SentOrigin s={s} />
         </Overlay>
       )}
       {s.phase === 'COMM_UNAVAILABLE' && (
-        <Overlay tone="bg-zinc-900/95">
+        <Overlay tone="bg-zinc-900/95" label="Communication paused" role="status">
           <p className="text-5xl font-black text-amber-300">Communication paused</p>
           <p data-testid="comm-reason" className="max-w-3xl text-2xl">{s.comm.reason}</p>
           <p className="max-w-3xl text-lg text-muted">No choices are being read and nothing will be selected while paused. This is not an alarm.</p>
@@ -309,14 +391,14 @@ export default function PatientView({ s }: { s: State }) {
         </Overlay>
       )}
       {s.phase === 'OFF' && (
-        <Overlay tone="bg-zinc-900/90">
+        <Overlay tone="bg-zinc-900/90" label="No EEG source" role="status">
           <p className="text-4xl font-black">No EEG source</p>
           <p className="text-xl text-muted">Choose REAL, SIMULATED or REPLAY in the operator panel.</p>
         </Overlay>
       )}
       {s.calibration && <CalibrationOverlay s={s} />}
       {s.emergency && (
-        <Overlay tone="bg-red-800/95">
+        <Overlay tone="bg-red-800/95" label="Help requested (demo control, not a certified alarm)" role="alertdialog">
           <p className="text-6xl font-black">HELP REQUESTED</p>
           <p className="text-2xl">Source: {s.emergency.source_label}</p>
           <p className="max-w-3xl text-lg">Demo control. This prototype and the headset are NOT a certified alarm system.</p>
