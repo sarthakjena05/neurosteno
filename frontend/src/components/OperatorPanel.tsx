@@ -86,7 +86,10 @@ function SessionTab({ s }: { s: State }) {
         <div className="flex flex-wrap items-center gap-2">
           <Btn onClick={() => run(get('/api/hardware').then(setHw))}>Hardware check</Btn>
           <Btn onClick={() => run(post('/api/hardware/discover', { only_paired: true }).then((d) => setDevices(d.devices)))}>Find paired Unicorn</Btn>
-          {devices?.map((d) => <Btn key={d} tone="bg-real" onClick={() => run(post('/api/mode', { mode: 'real', serial: d }))}>Connect {d}</Btn>)}
+          {devices?.map((d) => <Btn key={d} tone="bg-real" onClick={() => run(post('/api/mode', { mode: 'real', serial: d }))}>Connect {d} (LIVE)</Btn>)}
+          {devices?.map((d) => <Btn key={`a-${d}`} tone="bg-assisted text-black" title="Real EEG stream + simulated SSVEP augmentation; every selection is labelled ASSISTED"
+            onClick={() => run(post('/api/mode', { mode: 'assisted', base: 'real', serial: d }))}>Assisted {d}</Btn>)}
+          <Btn onClick={() => run(post('/api/mode', { mode: 'assisted', base: 'simulated' }))} title="Assisted pipeline without a headset (for rehearsal)">Assisted dry run</Btn>
           {devices && devices.length === 0 && <span className="text-xs text-amber-300">No paired headset found. Pair it in Windows Bluetooth settings and close other g.tec apps.</span>}
         </div>
         {hw && <pre className="max-h-32 overflow-auto rounded bg-ink p-2 text-xs">{JSON.stringify(hw, null, 1)}</pre>}
@@ -165,6 +168,7 @@ function SimulationTab({ s }: { s: State }) {
   return (
     <div className="flex flex-col gap-3">
       {err && <p className="rounded bg-red-900 p-2 text-sm">{err}</p>}
+      {s.mode.kind === 'assisted' && <p data-testid="assisted-note" className="rounded-lg border-2 border-assisted bg-teal-950 p-2 text-sm"><b>ASSISTED mode:</b> autopilot / gaze choose which target receives the <b>simulated</b> SSVEP augmentation added to the {s.mode.assisted_base === 'real' ? 'real headset' : 'simulated'} EEG. Every selection is assisted; sent messages are tagged “assisted”. Noise / electrode / Bluetooth knobs do not affect the real stream.</p>}
       <Section title="Virtual patient intent (autopilot)">
         <p className="text-sm">{sim.autopilot ? `Producing: “${sim.autopilot.text}”` : 'Idle. Click a choice on the patient screen to steer gaze manually.'}</p>
         <div className="flex flex-wrap gap-2">{SCENARIO_PHRASES.map(([l, id]) => <Btn key={id} onClick={() => run(command('sim_autopilot', { node_id: id }))}>{l}</Btn>)}</div>

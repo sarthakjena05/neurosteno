@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from .acquisition.assisted import AssistedSource
 from .acquisition import unicorn as unicorn_mod
 from .acquisition.base import AcquisitionError
 from .acquisition.replay import ReplaySource, describe_recording
@@ -138,6 +139,23 @@ async def set_mode(body: dict):
                 serial = devices[0]
             src = await asyncio.to_thread(unicorn_mod.UnicornSource, serial, body.get("eeg_labels"))
             engine.set_source(src)
+        elif mode == "assisted":
+            # Demo fallback: genuine EEG stream + simulated SSVEP augmentation (origin "assisted",
+            # never "real"). base="simulated" is a dry run without a headset.
+            base = body.get("base", "real")
+            if base == "simulated":
+                inner = SimulatedSource(seed=body.get("seed"))
+            elif base == "real":
+                serial = body.get("serial")
+                if not serial:
+                    devices = await asyncio.to_thread(unicorn_mod.discover, True)
+                    if not devices:
+                        raise HTTPException(400, {"error": "No paired Unicorn found for ASSISTED mode.", "code": "no_device"})
+                    serial = devices[0]
+                inner = await asyncio.to_thread(unicorn_mod.UnicornSource, serial, body.get("eeg_labels"))
+            else:
+                raise HTTPException(400, "base must be 'real' or 'simulated'")
+            engine.set_source(AssistedSource(inner, ssvep_uv=float(body.get("ssvep_uv", 1.8)), seed=body.get("seed")))
         else:
             raise HTTPException(400, f"unknown mode {mode}")
     except AcquisitionError as e:

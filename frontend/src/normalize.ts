@@ -9,7 +9,7 @@ import type { Phase, State } from './types'
  */
 
 const PHASES: Phase[] = ['OFF', 'IDLE', 'EVIDENCE_COLLECTION', 'PREDICTION_HIGHLIGHTED', 'ACCEPTED', 'REJECTED', 'ABSTAINED', 'MESSAGE_REVIEW', 'MESSAGE_SENT', 'COMM_UNAVAILABLE', 'CALIBRATING']
-const KINDS = ['real', 'simulated', 'replay', 'none'] as const
+const KINDS = ['real', 'simulated', 'replay', 'assisted', 'none'] as const
 
 type Raw = Record<string, unknown>
 const isObj = (v: unknown): v is Raw => !!v && typeof v === 'object' && !Array.isArray(v)

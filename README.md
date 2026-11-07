@@ -157,6 +157,14 @@ npm install
 ```
 The first SciPy import after install can take 30–90 s while Windows Defender scans the new DLLs.
 
+## Real-headset demo (one command)
+
+On the laptop with Unicorn Suite + UnicornPy: `.\start-hardware-demo.ps1 -Rebuild`, then open http://127.0.0.1:8000.
+See **HARDWARE_DEMO.md** for:
+- LIVE mode: real EEG decoding after a 2-target calibration.
+- ASSISTED mode: the real stream plus clearly labelled simulated SSVEP augmentation.
+- The 15-minute LIVE attempt and the 60–90 s recording sequence.
+
 ## Launch
 
 ```powershell

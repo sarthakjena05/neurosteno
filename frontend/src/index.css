@@ -14,6 +14,7 @@
   --color-real: #16a34a;
   --color-sim: #8b5cf6;
   --color-replay: #f59e0b;
+  --color-assisted: #2dd4bf;
   /* Comparison series (validated with dataviz validate_palette.js on #141b2e: CVD dE 26.8, all pass) */
   --color-fixed: #d95926;
   --color-neuro: #3987e5;
@@ -47,6 +48,7 @@ body {
 .mode-frame-sim, .mode-frame-replay { border-style: solid; border-image-slice: 1; }
 .mode-frame-sim { border-image-source: repeating-linear-gradient(45deg, var(--color-sim) 0 18px, #3b2a6b 18px 30px); }
 .mode-frame-replay { border-image-source: repeating-linear-gradient(45deg, var(--color-replay) 0 18px, #5a3a05 18px 30px); }
+.mode-frame-assisted { border-style: solid; border-image-slice: 1; border-radius: 0; border-image-source: repeating-linear-gradient(-45deg, var(--color-assisted) 0 18px, #0b4a3c 18px 30px); }
 /* border-image drops border-radius; keep the frame square for those modes rather than clip it. */
 .mode-frame-sim, .mode-frame-replay { border-radius: 0; }
 

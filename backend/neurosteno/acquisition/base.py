@@ -22,6 +22,7 @@ class SourceKind(str, enum.Enum):
     REAL = "real"
     SIMULATED = "simulated"
     REPLAY = "replay"
+    ASSISTED = "assisted"  # real EEG + simulated SSVEP augmentation (demo fallback); never "real"
 
 
 class AcquisitionError(RuntimeError):

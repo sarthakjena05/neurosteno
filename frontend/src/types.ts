@@ -46,7 +46,9 @@ export interface State {
   /** Contract v1.3. messages_sent_without_final_confirmation is 0 by construction (the engine refuses
    *  such sends); blocked_unconfirmed_send_attempts is the measured counter. */
   safety_invariants?: { messages_sent_without_final_confirmation: number; blocked_unconfirmed_send_attempts?: number }
-  mode: { kind: 'real' | 'simulated' | 'replay' | 'none'; label: string; origin: string; is_real_eeg: boolean; replay_of: string | null
+  mode: { kind: 'real' | 'simulated' | 'replay' | 'assisted' | 'none'; label: string; origin: string; is_real_eeg: boolean; replay_of: string | null
+    /** ASSISTED only: origin of the underlying stream ('real' headset, or 'simulated' dry run) */
+    assisted_base?: string | null
     /** Contract v1.2: calibrated thresholds exist for this origin AND the current n_choices. */
     calibrated?: boolean
     /** Contract v1.2: true for real-origin data, live or replayed. */

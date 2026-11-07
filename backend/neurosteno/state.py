@@ -16,6 +16,7 @@ MODE_LABEL = {
     "real": "REAL EEG",
     "simulated": "SIMULATED EEG",
     "replay": "REPLAY",
+    "assisted": "ASSISTED EEG",
     "none": "NO EEG SOURCE",
 }
 
@@ -93,6 +94,7 @@ def snapshot(eng: Engine) -> dict:
             "origin": origin,
             "is_real_eeg": kind == "real",
             "replay_of": src.status.extra.get("origin") if src and src.kind == SourceKind.REPLAY else None,
+            "assisted_base": src.status.extra.get("base_origin") if src and src.kind == SourceKind.ASSISTED else None,
             "calibrated": bool(src) and eng.stopping_for(eng.cfg.n_choices).calibrated,
             "calibration_required": bool(src) and eng.calibration_required(),
         },
