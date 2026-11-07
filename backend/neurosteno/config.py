@@ -27,6 +27,9 @@ class EngineConfig:
     gate_margin_factor: float = 1.5  # "gated": skip the per-step YES/NO when margin >= factor x calibrated threshold
     adapt_min_evidence: int = 8      # live outcomes at the current n before re-optimising n
     adapt_hysteresis: float = 0.20   # required expected gain before switching n
+    # What drives automatic n: "outcomes" (patient's own YES/NO answers) or "signal_quality"
+    # (measured SNR loss of the processed EEG, quality_adapt.py).
+    adapt_source: str = "outcomes"
     routing_mode: str = "adaptive"  # "adaptive" (risk-aware semantic routing) | "static" (baseline menu)
     # Optional multimodal interaction (interaction.py). EEG-only is the default and never needs IMU.
     interaction_mode: str = "eeg_only"  # "eeg_only" | "hybrid" | "motion_assisted" | "auto" (policy optimiser)

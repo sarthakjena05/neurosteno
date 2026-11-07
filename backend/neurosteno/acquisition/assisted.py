@@ -83,7 +83,7 @@ class AssistedSource(SimulatedSource):
         total = self.base.total_samples
         if total <= self._read_pos:
             return
-        block = self.base.read_range(self._read_pos, total).astype(np.float64)
+        block = self.base.read_range_raw(self._read_pos, total).astype(np.float64)
         self._read_pos = total
         n = block.shape[0]
         if n == 0:

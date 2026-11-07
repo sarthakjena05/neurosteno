@@ -247,6 +247,18 @@ def dispatch(action: str, p: dict) -> dict | None:
         e.cmd_resume()
     elif action == "set_choices":
         e.cmd_set_choices(int(p["n"]))
+    elif action == "set_injected_noise":
+        if e.source is None:
+            raise ValueError("Select an EEG source first")
+        lvl = e.source.set_injected_noise(float(p["uv"]))
+        e._mark("noise_injection", uv=lvl)
+        e.log("noise", f"Injected noise set to {lvl:.1f} uV RMS per EEG channel "
+              + ("(processed stream = raw EEG)" if lvl == 0 else "(raw EEG + synthetic noise)"))
+    elif action == "set_adapt_source":
+        if p["source"] not in ("outcomes", "signal_quality"):
+            raise ValueError("adapt source must be outcomes or signal_quality")
+        e.cfg.adapt_source = p["source"]
+        e.log("config", f"Automatic choice count driven by: {p['source']}")
     elif action == "set_auto_adapt":
         e.cfg.auto_adapt = bool(p["on"])
         e.log("config", f"Adaptive choice count {'on' if e.cfg.auto_adapt else 'off'}")

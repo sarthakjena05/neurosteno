@@ -41,7 +41,7 @@ class SessionRecorder:
         total = self.source.total_samples
         if total <= self._pos:
             return
-        data = self.source.read_range(self._pos, total)
+        data = self.source.read_range_raw(self._pos, total)  # raw: injected noise is logged as markers, not recorded
         lost = (total - self._pos) - data.shape[0]
         if lost > 0:  # overran the ring buffer: keep markers aligned with NaN rows
             self.lost_samples += lost

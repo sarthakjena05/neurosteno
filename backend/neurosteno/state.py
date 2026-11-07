@@ -153,7 +153,8 @@ def snapshot(eng: Engine) -> dict:
         | {"elapsed_s": round(now - eng.task["started"], 1)},
         "intended": None if not eng.intended else {"node_id": eng.intended, "text": eng.catalog.get(eng.intended).phrase},
         "metrics": {"recent": eng.metrics[-12:][::-1], "summary": eng.metrics_summary()},
-        "adaptation": {"auto": eng.cfg.auto_adapt, "recent": [o[0] for o in eng.outcomes], "last_change": eng.last_adaptation,
+        "adaptation": {"auto": eng.cfg.auto_adapt, "source": eng.cfg.adapt_source,
+                       "signal_quality": eng.qa["decision"], "quality_switches": eng.qa["switches"][-8:][::-1], "recent": [o[0] for o in eng.outcomes], "last_change": eng.last_adaptation,
                        "model": eng.adapt_model},
         "sim": None if sim is None else {
             "gaze_key": eng.sim_gaze_key, "gaze_hz": sim.gaze_hz,

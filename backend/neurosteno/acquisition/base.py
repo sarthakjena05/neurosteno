@@ -194,8 +194,37 @@ class EEGSource:
         """Called periodically by the engine on the event loop (used by clock-driven sources)."""
 
     # ---- data access -------------------------------------------------------------------
-    def read_range(self, abs_start: int, abs_end: int) -> np.ndarray:
+    # ---- controlled noise injection (acquisition/noise_injection.py) ---------------------
+    _injector = None
+
+    def injector(self):
+        if self._injector is None:
+            from .noise_injection import NoiseInjector
+            self._injector = NoiseInjector(self.sample_rate, [c.index for c in self.channels if c.kind == "eeg"])
+        return self._injector
+
+    @property
+    def injected_noise_uv(self) -> float:
+        return 0.0 if self._injector is None else self._injector.level_uv
+
+    def set_injected_noise(self, uv: float) -> float:
+        """Add controlled synthetic noise (uV RMS per EEG channel) to the PROCESSED stream from now on."""
+        lvl = self.injector().set_level(uv, self.total_samples)
+        self.status.extra["injected_noise_uv"] = lvl
+        return lvl
+
+    def read_range_raw(self, abs_start: int, abs_end: int) -> np.ndarray:
+        """Unmodified samples as acquired (no injected noise)."""
         return self.buffer.read_range(abs_start, abs_end)
+
+    def read_range(self, abs_start: int, abs_end: int) -> np.ndarray:
+        """PROCESSED samples: raw + injected noise (identical to raw while the level is 0)."""
+        x = self.buffer.read_range(abs_start, abs_end)
+        inj = self._injector
+        if inj is None or x.shape[0] == 0:
+            return x
+        first = min(abs_end, self.total_samples) - x.shape[0]
+        return inj.apply(x, first)
 
     @property
     def total_samples(self) -> int:

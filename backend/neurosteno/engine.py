@@ -48,6 +48,7 @@ from .signal.electrodes import (ElectrodeConfig, alpha_reactivity, channel_conta
                                 summarize_contacts)
 from .signal.quality import QualityConfig, assess_channels, common_mode
 from .interaction import InteractionMixin
+from .quality_adapt import QualityAdaptMixin
 from .signal.gestures import GestureConfig
 
 log = logging.getLogger(__name__)
@@ -114,7 +115,7 @@ class CalibSession:
     EYES_S = 10.0
 
 
-class Engine(InteractionMixin):
+class Engine(InteractionMixin, QualityAdaptMixin):
     def __init__(self, catalog: Catalog, store: ProfileStore, cfg: EngineConfig | None = None,
                  clock=time.monotonic):
         self.catalog = catalog
@@ -173,6 +174,7 @@ class Engine(InteractionMixin):
         self.sim_pending_mistake = False
         self.version = 0
         self._init_interaction()
+        self._init_quality_adapt()
         self.profile: Profile
         self.set_profile("new-patient")
 
@@ -425,6 +427,9 @@ class Engine(InteractionMixin):
                 self._update_quality(now)
                 self._update_blinks()  # 4 Hz is plenty; the detector looks back over 3 s
                 self._update_imu(now)  # motion channels + optional gestures (no-op without IMU)
+                self._noise_metrics(now)  # processed vs raw band noise (controlled noise injection)
+                if self.cfg.adapt_source == "signal_quality":
+                    self._quality_adapt(now)
             if now - self._last_electrodes >= 1.0:
                 self._update_electrodes(now)
         if self.emergency:
@@ -875,6 +880,8 @@ class Engine(InteractionMixin):
         m = self.adapt_model
         if not self.cfg.auto_adapt or m is None or self.adapt_since_switch < self.cfg.adapt_min_evidence:
             return
+        if self.cfg.adapt_source != "outcomes":
+            return  # signal-quality adaptation (quality_adapt.py) owns n
         cur, new = self.cfg.n_choices, m["n"]
         if new == cur:
             return
