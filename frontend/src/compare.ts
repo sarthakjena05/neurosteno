@@ -11,7 +11,7 @@ import type { State } from './types'
  * If a number does not exist, the UI says "not measured yet". It never fills in a value.
  */
 
-export type Provenance = 'EXACT' | 'ESTIMATE' | 'MEASURED' | 'NONE'
+export type Provenance = 'EXACT' | 'ESTIMATE' | 'MEASURED' | 'BENCHMARK' | 'DEMO' | 'NONE'
 export type Arm = 'static' | 'adaptive'
 
 export interface PathStep { label: string; kind?: string }
@@ -89,24 +89,53 @@ export function measuredFromSession(s: State | null, profile: string, n: number,
     })
 }
 
-/** Headless benchmark rows (B3), when Agent A publishes them. Condition A = fixed menu. */
+/**
+ * Headless benchmark (contract v1.3 B3: backend/reports/benchmark_results.json via /api/benchmark).
+ * Shapes mirror the published file; every field is optional-safe because older reports may lack them.
+ */
+export interface BenchCondition {
+  key: string; label: string; routing: string; n: number | null; decoder: string
+  step_confirm: boolean; live_adapt: boolean; confirm_gate: number | null
+}
 export interface BenchRow {
-  condition: string; scenario: string; profile: string; message: string; n_start: number; snr_uv?: number; runs: number
-  mean_selections: number; mean_completion_s: number; correct: number; wrong?: number; not_completed?: number
-  correct_msgs_per_min: number; final_sent_without_confirm?: number
+  condition: string; scenario: string; profile: string; message: string; node_id?: string
+  snr_level?: string; snr_uv?: number; n_start: number; n_start_counts?: Record<string, number>; runs: number
+  mean_selections: number; mean_completion_s: number; sd_completion_s?: number
+  correct: number; wrong?: number; not_completed?: number; mean_rejected?: number; mean_abstentions?: number
+  correct_msgs_per_min: number; final_sent_without_confirm?: number; origin?: string
 }
-export interface Bench { available: boolean; origin?: string; generated_at?: string; note?: string; rows?: BenchRow[] }
-
-export const BENCH_CONDITIONS: Record<string, string> = {
-  A: 'Fixed menu · fixed targets · confirm every step',
-  B: '+ context / risk-aware routing',
-  C: '+ signal-adaptive target count',
-  D: '+ provisional confirmation (only if calibration allows)',
+export interface BenchPooled {
+  condition: string; sessions: number; cmpm_mean: number; cmpm_ci95?: [number, number]
+  error_rate: number; false_confirmations_task: number; messages_sent: number; timeouts?: number
+  idle_false_sent_per_hour: number; idle_false_selections_per_min?: number
+  urgent_mean_s?: number; urgent_completed?: string
+}
+export interface Bench {
+  available: boolean; kind?: string; data_origin?: string; real_eeg?: boolean; generated_at?: string
+  disclaimer?: string; limitations?: string[]; command?: string; research_question?: string
+  conditions?: BenchCondition[]
+  metrics_definitions?: Record<string, string>
+  per_message?: { description?: string; snr_levels_uv?: Record<string, number>; final_sent_without_confirm_note?: string; rows: BenchRow[] }
+  summary?: { pooled?: BenchPooled[] }
 }
 
-export function benchFor(b: Bench | null, scenario: string, message: string, n: number): BenchRow[] {
-  if (!b?.available || !Array.isArray(b.rows)) return []
-  return b.rows.filter((r) => r.scenario === scenario && r.message === message && r.n_start === n)
+export const SNR_ORDER = ['low', 'medium', 'high']
+
+/** All benchmark conditions for one task at one simulated signal level (no n filter: C/D choose n). */
+export function benchFor(b: Bench | null, scenario: string, message: string, snr: string): BenchRow[] {
+  const rows = b?.available ? b.per_message?.rows : undefined
+  if (!Array.isArray(rows)) return []
+  return rows.filter((r) => r.scenario === scenario && r.message === message && (r.snr_level ?? 'medium') === snr)
+}
+
+/** The like-for-like pair behind the EXACT counts: fixed menu (A{n}) vs context routing (B{n}), same n and decoder. */
+export function benchArm(b: Bench | null, scenario: string, message: string, snr: string, arm: Arm, n: number): BenchRow | undefined {
+  const key = `${arm === 'static' ? 'A' : 'B'}${n}`
+  return benchFor(b, scenario, message, snr).find((r) => r.condition === key)
+}
+
+export function conditionLabel(b: Bench | null, key: string): string {
+  return b?.conditions?.find((c) => c.key === key)?.label ?? key
 }
 
 export function pct(from: number, to: number): number {

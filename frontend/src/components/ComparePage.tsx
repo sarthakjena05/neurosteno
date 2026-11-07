@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react'
 import { command, get } from '../api'
 import {
-  BENCH_CONDITIONS, benchFor, estimatedTime, findRow, measuredFromSession, MESSAGE_LABEL, pct, selections,
-  type Arm, type Bench, type CompareData, type CompareRow, type Measured, type Provenance,
+  benchArm, benchFor, conditionLabel, estimatedTime, findRow, measuredFromSession, MESSAGE_LABEL, pct, selections, SNR_ORDER,
+  type Arm, type Bench, type BenchRow, type CompareData, type CompareRow, type Measured, type Provenance,
 } from '../compare'
 import { originLabel } from '../mode'
 import type { State } from '../types'
-import type { ArmResult, LiveAB as LiveABApi } from '../useLiveAB'
+import { AB_SEED, type ArmResult, conditionsMatch, type LiveAB as LiveABApi, startBlocker } from '../useLiveAB'
 import { ModeBadge } from './PatientView'
 
 /**
  * Judge view: the same message under a traditional fixed menu and under NeuroSteno.
- * Every number is tagged EXACT / ESTIMATE / MEASURED (with data origin) or "not measured yet".
+ * Every number is tagged EXACT / ESTIMATE / BENCHMARK / MEASURED / DEMO (with data origin) or
+ * "not measured"; nothing is filled in.
  */
 
 const ARM: Record<Arm, { title: string; sub: string; dot: string; bar: string }> = {
@@ -22,36 +23,27 @@ const ARM: Record<Arm, { title: string; sub: string; dot: string; bar: string }>
 const TAG_STYLE: Record<Provenance, string> = {
   EXACT: 'bg-zinc-200 text-black',
   ESTIMATE: 'border border-dashed border-zinc-300 text-zinc-100',
+  BENCHMARK: 'bg-violet-200 text-black',
   MEASURED: 'bg-sky-200 text-black',
+  DEMO: 'border border-sky-300 text-sky-100',
   NONE: 'border border-line text-muted',
 }
 const TAG_HELP: Record<Provenance, string> = {
-  EXACT: 'Deterministic count from the real navigator. No EEG involved.',
-  ESTIMATE: 'Backend routing model: selections × time per selection. Not a measurement.',
-  MEASURED: 'Measured in completed runs. The data origin is always shown next to it.',
-  NONE: 'Nothing measured yet. No value is filled in.',
+  EXACT: 'Deterministic count from the real navigator (seed profiles). No EEG involved.',
+  ESTIMATE: 'Backend routing model: selections × time per selection, from labelled assumptions. Not a measurement.',
+  BENCHMARK: 'Headless benchmark: same profile, message, signal level and seed for every condition, many runs. Simulated EEG.',
+  MEASURED: 'Completed messages in this session. The data origin is always shown.',
+  DEMO: 'One live run per arm in a fixed order. An illustration, not a controlled experiment.',
+  NONE: 'Nothing measured. No value is filled in.',
 }
+const TAG_TEXT: Partial<Record<Provenance, string>> = { NONE: 'NOT MEASURED', BENCHMARK: 'BENCHMARK · SIMULATED', DEMO: 'DEMO RUN · SIMULATED' }
 
 export function Tag({ tag, origin }: { tag: Provenance; origin?: string }) {
-  const label = tag === 'MEASURED' && origin ? `MEASURED · ${origin === 'simulated' ? 'SIMULATED' : origin.toUpperCase()}` : tag === 'NONE' ? 'NOT MEASURED' : tag
+  const label = tag === 'MEASURED' && origin ? `MEASURED · ${origin === 'simulated' ? 'SIMULATED' : origin.toUpperCase()}` : TAG_TEXT[tag] ?? tag
   return <span data-testid="prov-tag" title={TAG_HELP[tag]} className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-bold tracking-wide ${TAG_STYLE[tag]}`}>{label}</span>
 }
 
-function Dots({ n, arm, path }: { n: number; arm: Arm; path?: { label: string; kind?: string }[] }) {
-  if (path?.length) {
-    return (
-      <ol className="flex flex-wrap items-center gap-1 text-sm" aria-label={`${n} selections`}>
-        {path.map((p, i) => (
-          <li key={i} className="flex items-center gap-1">
-            {i > 0 && <span aria-hidden className="text-muted">›</span>}
-            <span className={`rounded-md px-2 py-0.5 ${p.kind === 'shortcut' ? 'bg-neuro text-white' : p.kind === 'urgent_route' ? 'bg-red-700' : 'bg-panel2'}`}>
-              {p.kind === 'shortcut' ? '★ ' : p.kind === 'urgent_route' ? '⚠ ' : ''}{p.label}
-            </span>
-          </li>
-        ))}
-      </ol>
-    )
-  }
+function Dots({ n, arm }: { n: number; arm: Arm }) {
   return (
     <div className="flex flex-wrap gap-1.5" role="img" aria-label={`${n} brain selections, one dot each`} data-testid={`dots-${arm}`}>
       {Array.from({ length: n }, (_, i) => <span key={i} className={`h-4 w-4 rounded-full ${ARM[arm].dot}`} />)}
@@ -59,22 +51,54 @@ function Dots({ n, arm, path }: { n: number; arm: Arm; path?: { label: string; k
   )
 }
 
+/** The exact route (contract v1.3 B1), when the backend provides it. */
+function Path({ path, arm }: { path?: { label: string; kind?: string }[]; arm: Arm }) {
+  if (!path?.length) return null
+  return (
+    <ol className="flex flex-wrap items-center gap-1 text-xs" aria-label="Route, one selection per step" data-testid={`path-${arm}`}>
+      {path.map((p, i) => (
+        <li key={i} className="flex items-center gap-1">
+          {i > 0 && <span aria-hidden className="text-muted">›</span>}
+          <span className={`rounded px-1.5 py-0.5 ${p.kind === 'shortcut' ? 'bg-neuro font-bold text-white' : p.kind === 'urgent_route' ? 'bg-red-700' : p.kind === 'back' ? 'bg-zinc-700' : 'bg-panel2'}`}>
+            {p.kind === 'shortcut' ? '★ ' : p.kind === 'urgent_route' ? '⚠ ' : p.kind === 'back' ? '↩ ' : ''}{p.label}
+          </span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 function fmtS(v: number) { return v >= 90 ? `${Math.floor(v / 60)} min ${Math.round(v % 60)} s` : `${Math.round(v)} s` }
 
-function MeasuredLine({ m }: { m: Measured }) {
+function MeasuredLine({ m, scope }: { m: Measured; scope: string }) {
   return (
-    <p className="flex flex-wrap items-center gap-2 text-sm">
+    <p className="flex flex-wrap items-center gap-2 text-xs">
       <Tag tag="MEASURED" origin={m.origin} />
-      {m.source === 'replay' && <span className="text-xs text-amber-300">replayed</span>}
+      {m.source === 'replay' && <span className="text-amber-300">replayed</span>}
+      <span className="text-muted">{scope}:</span>
       <span>{m.messages} msg · mean {fmtS(m.mean_completion_s)}</span>
       {m.correct_per_min != null
-        ? <span><b>{m.correct_per_min}</b> correct msgs/min ({m.correct}/{m.scored} correct)</span>
-        : <span className="text-muted">correctness not scored (no intended message set)</span>}
+        ? <span>{m.correct_per_min} correct msgs/min ({m.correct}/{m.scored})</span>
+        : <span className="text-muted">correctness not scored</span>}
     </p>
   )
 }
 
-function ArmCard({ arm, row, s, live, measured }: { arm: Arm; row: CompareRow; s: State; live?: ArmResult; measured: Measured[] }) {
+function BenchLine({ r, snr }: { r: BenchRow; snr: string }) {
+  return (
+    <p className="flex flex-wrap items-center gap-2 text-sm" data-testid="bench-line">
+      <Tag tag="BENCHMARK" />
+      <span><b>{r.correct_msgs_per_min}</b> correct msgs/min</span>
+      <span>· {r.correct}/{r.runs} correct{(r.wrong ?? 0) > 0 ? `, ${r.wrong} wrong` : ''}{(r.not_completed ?? 0) > 0 ? `, ${r.not_completed} not completed` : ''}</span>
+      <span>· mean {fmtS(r.mean_completion_s)}, {r.mean_selections} selections</span>
+      <span className="text-xs text-muted">{snr} signal ({r.snr_uv} µV) · condition {r.condition}</span>
+    </p>
+  )
+}
+
+function ArmCard({ arm, row, s, live, measured, bench, snr, profileName }: {
+  arm: Arm; row: CompareRow; s: State; live?: ArmResult; measured: Measured[]; bench?: BenchRow; snr: string; profileName: string
+}) {
   const sel = selections(row, arm)
   const t = estimatedTime(row, arm, s)
   const path = arm === 'static' ? row.path_static : row.path_adaptive
@@ -90,32 +114,37 @@ function ArmCard({ arm, row, s, live, measured }: { arm: Arm; row: CompareRow; s
         <span className="pb-1 text-lg">brain selections</span>
         <span className="ml-auto pb-1"><Tag tag="EXACT" /></span>
       </div>
-      <Dots n={sel.value} arm={arm} path={path} />
+      <Dots n={sel.value} arm={arm} />
+      <Path path={path} arm={arm} />
       <div className="flex flex-col gap-1.5 border-t border-line pt-2">
+        {bench ? <BenchLine r={bench} snr={snr} />
+          : <p className="flex items-center gap-2 text-sm text-muted"><Tag tag="NONE" /> no benchmark row for this task / target count / signal level</p>}
         <p className="flex flex-wrap items-center gap-2 text-sm">
           {t ? <><Tag tag="ESTIMATE" /><span>≈ <b>{fmtS(t.value)}</b> to compose</span><span className="text-xs text-muted">{t.source}</span></>
-            : <><Tag tag="NONE" /><span className="text-muted">time estimate needs the engine set to {row.n} targets</span></>}
+            : <><Tag tag="NONE" /><span className="text-muted">no time estimate for {row.n} targets</span></>}
         </p>
-        {live && <LiveLine r={live} />}
-        {measured.map((m, i) => <MeasuredLine key={i} m={m} />)}
-        {!live && measured.length === 0 && (
-          <p className="flex items-center gap-2 text-sm text-muted"><Tag tag="NONE" /> completion time and msgs/min: not measured yet for this task</p>
-        )}
+        {live && <LiveLine r={live} exact={sel.value} />}
+        {measured.map((m, i) => <MeasuredLine key={i} m={m} scope={`this session, all ${profileName} messages at ${row.n} targets`} />)}
       </div>
     </section>
   )
 }
 
-function LiveLine({ r }: { r: ArmResult }) {
+function LiveLine({ r, exact }: { r: ArmResult; exact: number }) {
   if (r.status !== 'done') {
-    return <p className="text-sm text-sky-300" data-testid={`live-${r.arm}`}>Live run: {r.status === 'running' ? 'virtual patient is composing (confirms every step)…' : r.status}{r.error ? `: ${r.error}` : ''}</p>
+    return <p className="text-sm text-sky-300" data-testid={`live-${r.arm}`}>Live demo run: {r.status === 'running' ? 'virtual patient is composing (confirms every step)…' : r.status}{r.error ? `: ${r.error}` : ''}</p>
   }
   return (
     <p className="flex flex-wrap items-center gap-2 text-sm" data-testid={`live-${r.arm}`}>
-      <Tag tag="MEASURED" origin="simulated" />
-      <span>this run: <b>{r.selections ?? '?'}</b> selections in <b>{r.completion_s != null ? fmtS(r.completion_s) : '?'}</b></span>
+      <Tag tag="DEMO" />
+      <span>1 run: <b>{r.selections ?? '?'}</b> selections in <b>{r.completion_s != null ? fmtS(r.completion_s) : '?'}</b></span>
       <span>{r.correct === true ? '✓ correct message' : r.correct === false ? '✗ wrong message' : 'unscored'}</span>
       {(r.rejected ?? 0) > 0 && <span className="text-muted">{r.rejected} wrong highlight(s) rejected</span>}
+      {r.selections != null && r.selections !== exact && (
+        <span className="w-full text-xs text-amber-300" data-testid={`live-mismatch-${r.arm}`}>
+          Differs from the EXACT seed-profile count ({exact}): live routing also uses this machine’s saved simulated history{r.abstentions ? ' and abstentions/retries' : ''}.
+        </span>
+      )}
     </p>
   )
 }
@@ -300,47 +329,148 @@ function Uncertainty({ s }: { s: State }) {
   )
 }
 
+function CondRow({ label, a, b }: { label: string; a: unknown; b: unknown }) {
+  const same = JSON.stringify(a) === JSON.stringify(b)
+  const f = (v: unknown) => (Array.isArray(v) ? (v.length ? v.join(', ') : 'none') : v == null ? '-' : String(v))
+  return <tr className="border-t border-line"><th scope="row" className="pr-2 text-left font-normal text-muted">{label}</th><td className="px-2">{f(a)}</td><td className="px-2">{f(b)}</td><td>{label === 'routing' ? '(compared)' : same ? '✓' : '✗ differs'}</td></tr>
+}
+
 function LiveAB({ s, node, profile, n, ab }: { s: State; node: string; profile: string; n: number; ab: LiveABApi }) {
-  const sim = s.mode.kind === 'simulated'
+  const blocker = startBlocker(s)
+  const run = ab.run && ab.run.node_id === node && ab.run.n === n ? ab.run : null
+  const [a, b] = run ? [run.arms.find((x) => x.arm === 'adaptive'), run.arms.find((x) => x.arm === 'static')] : []
+  const match = run && a?.conditions && b?.conditions ? conditionsMatch(a.conditions, b.conditions) : null
   return (
-    <section className="flex flex-col gap-2 rounded-2xl border border-line bg-panel p-4" aria-labelledby="live-ab">
+    <section className="flex flex-col gap-2 rounded-2xl border border-line bg-panel p-4" aria-labelledby="live-ab" data-testid="live-ab">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 id="live-ab" className="text-lg font-black">Run it live</h3>
-        <span className="text-sm text-muted">The virtual patient composes this message, NeuroSteno first, then the fixed menu, on the patient screen.</span>
+        <h3 id="live-ab" className="text-lg font-black">Live demonstration</h3>
+        <Tag tag="DEMO" />
+        <span className="text-sm text-amber-200">Fixed order, one run each: an illustration, <b>not a controlled experiment</b>. For the controlled comparison, see the benchmark above.</span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {!ab.active
-          ? <button type="button" disabled={!sim} onClick={() => ab.start(node, profile, n)} className="rounded-lg bg-sky-600 px-4 py-2 font-bold disabled:opacity-40">▶ Run live A/B (simulated EEG)</button>
+          ? <button type="button" disabled={!!blocker} onClick={() => ab.start(node, profile, n)} className="rounded-lg bg-sky-600 px-4 py-2 font-bold disabled:opacity-40">▶ Run live: NeuroSteno, then fixed menu (simulated EEG)</button>
           : <button type="button" onClick={() => ab.stop()} className="rounded-lg bg-red-700 px-4 py-2 font-bold">■ Stop</button>}
-        {!sim && <span className="text-sm text-amber-300">Available in SIMULATED mode only. Real-EEG comparisons need a calibrated headset.</span>}
+        {blocker && <span className="text-sm text-amber-300" data-testid="ab-blocker">{blocker}</span>}
       </div>
-      <p className="text-xs text-muted">Both runs use {n} targets with the same confirmation policy and every step confirmed by the virtual patient. NeuroSteno uses this profile’s confirmed history, which includes messages sent earlier in this session. Results come from the server’s task metrics, labelled SIMULATED. One run is an illustration, not a benchmark.</p>
+      <div className="grid gap-2 text-xs md:grid-cols-2">
+        <div>
+          <p className="font-bold">Held the same for both arms</p>
+          <ul className="list-disc pl-4 text-muted">
+            <li>Simulator restarted for each arm with seed {AB_SEED} and default signal settings</li>
+            <li>Random mistakes off; armed mistakes and autopilot cleared</li>
+            <li>Same patient, message, {n} targets (signal-adaptive count off), confirmation policy</li>
+            <li>The virtual patient confirms every step and SEND itself</li>
+          </ul>
+        </div>
+        <div>
+          <p className="font-bold">Not controlled</p>
+          <ul className="list-disc pl-4 text-muted">
+            <li>Patient history: NeuroSteno uses the seed profile <b>plus this machine’s saved simulated history</b>. There is no reset from the UI, so the live count can differ from the EXACT seed count.</li>
+            <li>Noise realisation: same seed, different sample timing</li>
+            <li>Order: NeuroSteno always runs first. That can only hand the fixed menu history, which it ignores.</li>
+            <li>One run per arm: no variance, no statistics</li>
+          </ul>
+        </div>
+      </div>
+      {run && a?.conditions && b?.conditions && (
+        <table className="text-xs tabular-nums" data-testid="ab-conditions">
+          <caption className="text-left">
+            Conditions recorded at the start of each arm:{' '}
+            {match?.ok ? <b className="text-green-300">identical except routing ✓</b> : <b className="text-red-300">NOT comparable: {match?.differences.join(', ')}</b>}
+          </caption>
+          <thead><tr><th /><th className="px-2 text-left">NeuroSteno</th><th className="px-2 text-left">Fixed menu</th><th /></tr></thead>
+          <tbody>
+            {(['routing', 'seed', 'n', 'auto_adapt', 'policy', 'ssvep_uv', 'noise_multiplier', 'mistake_rate', 'drop_probability', 'bad_channels', 'disconnected'] as const).map((k) =>
+              <CondRow key={k} label={k} a={a.conditions![k]} b={b.conditions![k]} />)}
+          </tbody>
+        </table>
+      )}
+      {run?.finished && <p className="text-xs text-muted">Afterwards the simulator keeps the default signal settings; routing is back on NeuroSteno and the operator’s mistake rate is restored.</p>}
     </section>
   )
 }
 
-function BenchPanel({ bench, scenario, message, n }: { bench: Bench | null; scenario: string; message: string; n: number }) {
-  const rows = benchFor(bench, scenario, message, n)
+function pctTxt(v: number) { return `${(v * 100).toFixed(v < 0.01 && v > 0 ? 2 : 1)}%` }
+
+function BenchPanel({ bench, scenario, message, n, snr, setSnr }: { bench: Bench | null; scenario: string; message: string; n: number; snr: string; setSnr: (v: string) => void }) {
+  const rows = benchFor(bench, scenario, message, snr)
+  const pooled = bench?.summary?.pooled ?? []
+  const levels = bench?.per_message?.snr_levels_uv ?? {}
   return (
-    <section className="flex flex-col gap-2 rounded-2xl border border-line bg-panel p-4" aria-labelledby="bench">
-      <h3 id="bench" className="text-lg font-black">Benchmark (headless, many runs)</h3>
-      {!bench?.available && <p className="flex items-center gap-2 text-sm text-muted"><Tag tag="NONE" /> Not published yet. The backend team is running it on the time-accelerated simulator. No numbers are shown until it exists.</p>}
-      {bench?.available && rows.length === 0 && <p className="text-sm text-muted">No benchmark rows for this task / target count.</p>}
-      {rows.length > 0 && (
-        <table className="text-sm tabular-nums" data-testid="bench-table">
-          <caption className="text-left text-xs text-muted">{originLabel(bench?.origin ?? 'simulated')} · {bench?.generated_at ?? ''} {bench?.note ?? ''}</caption>
-          <thead><tr><th className="text-left">condition</th><th>SNR µV</th><th>runs</th><th>sel</th><th>time</th><th>correct</th><th>correct msgs/min</th><th>sent w/o confirm</th></tr></thead>
-          <tbody>{rows.map((r, i) => (
-            <tr key={i} className="border-t border-line">
-              <td title={BENCH_CONDITIONS[r.condition] ?? ''}>{r.condition} · {BENCH_CONDITIONS[r.condition] ?? ''}</td>
-              <td className="text-center">{r.snr_uv ?? '-'}</td><td className="text-center">{r.runs}</td><td className="text-center">{r.mean_selections}</td>
-              <td className="text-center">{fmtS(r.mean_completion_s)}</td><td className="text-center">{r.correct}/{r.runs}</td>
-              <td className="text-center font-bold">{r.correct_msgs_per_min}</td><td className="text-center">{r.final_sent_without_confirm ?? '-'}</td>
-            </tr>
-          ))}</tbody>
-        </table>
+    <section className="flex flex-col gap-3 rounded-2xl border border-line bg-panel p-4" aria-labelledby="bench" data-testid="bench-panel">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 id="bench" className="text-lg font-black">Benchmark: controlled, many runs</h3>
+        <Tag tag={bench?.available ? 'BENCHMARK' : 'NONE'} />
+      </div>
+      {!bench?.available && <p className="text-sm text-muted">Not published yet. No numbers are shown until it exists.</p>}
+      {bench?.available && (
+        <>
+          <p className="rounded-lg bg-amber-950 p-2 text-xs text-amber-100" data-testid="bench-disclaimer">
+            {bench.disclaimer ?? 'Simulation only.'} {bench.real_eeg === false && <b>No real-EEG results.</b>}
+          </p>
+          <Picker label="Simulated signal" value={snr} onPick={setSnr}
+            options={SNR_ORDER.filter((k) => k in levels || rows.length === 0).map((k) => ({ v: k, text: levels[k] != null ? `${k} (${levels[k]} µV)` : k }))} />
+          {rows.length === 0 && <p className="text-sm text-muted">No benchmark rows for this task at this signal level.</p>}
+          {rows.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm tabular-nums" data-testid="bench-table">
+                <caption className="text-left text-xs text-muted">This task, every condition: same profile, message, signal level and seed. {rows[0].runs} runs each. Bold rows = the like-for-like pair behind the counts above ({n} targets).</caption>
+                <thead><tr className="text-left"><th>condition</th><th>targets</th><th>correct</th><th>sel</th><th>time</th><th>correct msgs/min</th><th>sent w/o final YES</th></tr></thead>
+                <tbody>{rows.map((r) => {
+                  const pair = r.condition === `A${n}` || r.condition === `B${n}`
+                  return (
+                    <tr key={r.condition} className={`border-t border-line ${pair ? 'font-bold' : ''}`}>
+                      <td title={r.condition}>{conditionLabel(bench, r.condition)}</td>
+                      <td>{r.n_start_counts && Object.keys(r.n_start_counts).length > 1 ? Object.entries(r.n_start_counts).map(([k, v]) => `${k}×${v}`).join(' ') : r.n_start}</td>
+                      <td>{r.correct}/{r.runs}{(r.wrong ?? 0) > 0 ? ` (${r.wrong} wrong)` : ''}{(r.not_completed ?? 0) > 0 ? ` (${r.not_completed} unfinished)` : ''}</td>
+                      <td>{r.mean_selections}</td><td>{fmtS(r.mean_completion_s)}</td>
+                      <td>{r.correct_msgs_per_min}</td><td>{r.final_sent_without_confirm ?? '-'}</td>
+                    </tr>
+                  )
+                })}</tbody>
+              </table>
+            </div>
+          )}
+          {pooled.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm tabular-nums" data-testid="pooled-table">
+                <caption className="text-left text-xs text-muted">All sessions pooled. <b>Speed and safety together</b>: neither column alone tells the story. “Sent while idle” = messages sent while the virtual patient attended nothing.</caption>
+                <thead><tr className="text-left"><th>condition</th><th>sessions</th><th>correct msgs/min [95% CI]</th><th>wrong-message rate</th><th>wrong msgs confirmed</th><th>sent while idle / hour</th><th>urgent completed</th></tr></thead>
+                <tbody>{pooled.map((p) => (
+                  <tr key={p.condition} className="border-t border-line">
+                    <td title={p.condition}>{conditionLabel(bench, p.condition)}</td><td>{p.sessions}</td>
+                    <td>{p.cmpm_mean.toFixed(2)}{p.cmpm_ci95 ? ` [${p.cmpm_ci95[0].toFixed(2)}, ${p.cmpm_ci95[1].toFixed(2)}]` : ''}</td>
+                    <td>{pctTxt(p.error_rate)}</td><td>{p.false_confirmations_task}</td>
+                    <td className={p.idle_false_sent_per_hour >= 1 ? 'text-red-300' : 'text-green-300'}>{p.idle_false_sent_per_hour}</td>
+                    <td>{p.urgent_completed ?? '-'}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+          <details className="text-xs">
+            <summary className="cursor-pointer font-bold">Limitations ({bench.limitations?.length ?? 0}) · how it was run</summary>
+            <ul className="mt-1 list-disc pl-4">{bench.limitations?.map((l) => <li key={l}>{l}</li>)}</ul>
+            <p className="mt-1 text-muted">Generated {bench.generated_at} · data origin {originLabel(bench.data_origin ?? 'simulated')} · <code>{bench.command}</code></p>
+          </details>
+        </>
       )}
     </section>
+  )
+}
+
+function SafetyInvariant({ s }: { s: State }) {
+  const inv = s.safety_invariants
+  if (!inv) return null
+  const blocked = inv.blocked_unconfirmed_send_attempts
+  return (
+    <p className="flex flex-wrap items-center gap-2 text-sm" data-testid="safety-invariant">
+      <span>🔒 <b>Enforced by the engine:</b> a message cannot be sent without a decoded final YES (guaranteed by code, not a measurement).</span>
+      {blocked != null && (
+        <span className="flex items-center gap-2"><Tag tag="MEASURED" origin={s.mode.origin} /> unconfirmed send attempts blocked this session: <b>{blocked}</b></span>
+      )}
+    </p>
   )
 }
 
@@ -351,6 +481,7 @@ export default function ComparePage({ s, ab }: { s: State; ab: LiveABApi }) {
   const [scenario, setScenario] = useState('B')
   const [message, setMessage] = useState('turn-left')
   const [n, setN] = useState(2)
+  const [snr, setSnr] = useState('medium')
 
   useEffect(() => {
     get<CompareData>('/api/routing/compare').then(setData).catch((e: Error) => setErr(e.message))
@@ -360,6 +491,7 @@ export default function ComparePage({ s, ab }: { s: State; ab: LiveABApi }) {
   const row = findRow(data, scenario, message, n)
   const sc = data?.scenarios.find((x) => x.id === scenario)
   const profile = sc?.profile ?? 'new-patient'
+  const profileName = sc?.title ?? profile
   const node = data?.messages[message] ?? ''
   const live = ab.run && ab.run.node_id === node && ab.run.n === n ? ab.run.arms : []
 
@@ -370,7 +502,7 @@ export default function ComparePage({ s, ab }: { s: State; ab: LiveABApi }) {
         <ModeBadge s={s} />
       </header>
       <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
-        Numbers are tagged: <Tag tag="EXACT" /> navigator count · <Tag tag="ESTIMATE" /> routing model · <Tag tag="MEASURED" origin="simulated" /> completed runs (origin shown) · <Tag tag="NONE" />. Research prototype; no real-EEG performance is claimed.
+        Numbers are tagged: <Tag tag="EXACT" /> navigator count · <Tag tag="ESTIMATE" /> routing model · <Tag tag="BENCHMARK" /> controlled simulated runs · <Tag tag="DEMO" /> one live run · <Tag tag="MEASURED" origin="simulated" /> this session · <Tag tag="NONE" />. Research prototype; no real-EEG performance is claimed.
       </p>
       {err && <p role="alert" className="rounded bg-red-900 p-2 text-sm">Could not load the comparison: {err}</p>}
 
@@ -386,12 +518,15 @@ export default function ComparePage({ s, ab }: { s: State; ab: LiveABApi }) {
       {row && (
         <>
           <div className="grid gap-3 lg:grid-cols-2">
-            <ArmCard arm="static" row={row} s={s} live={live.find((a) => a.arm === 'static')} measured={measuredFromSession(s, profile, n, 'static')} />
-            <ArmCard arm="adaptive" row={row} s={s} live={live.find((a) => a.arm === 'adaptive')} measured={measuredFromSession(s, profile, n, 'adaptive')} />
+            <ArmCard arm="static" row={row} s={s} live={live.find((a) => a.arm === 'static')} measured={measuredFromSession(s, profile, n, 'static')}
+              bench={benchArm(bench, scenario, message, snr, 'static', n)} snr={snr} profileName={profileName} />
+            <ArmCard arm="adaptive" row={row} s={s} live={live.find((a) => a.arm === 'adaptive')} measured={measuredFromSession(s, profile, n, 'adaptive')}
+              bench={benchArm(bench, scenario, message, snr, 'adaptive', n)} snr={snr} profileName={profileName} />
           </div>
           <Delta row={row} />
+          <SafetyInvariant s={s} />
+          <BenchPanel bench={bench} scenario={scenario} message={message} n={n} snr={snr} setSnr={setSnr} />
           <LiveAB s={s} node={node} profile={profile} n={n} ab={ab} />
-          <BenchPanel bench={bench} scenario={scenario} message={message} n={n} />
         </>
       )}
       {data && <ScenarioTable data={data} n={n} sel={{ scenario, message }} onPick={(a, b) => { setScenario(a); setMessage(b) }} />}

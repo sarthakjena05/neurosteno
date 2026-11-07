@@ -7,6 +7,16 @@ and a **5:00 timer** (step budgets add up to 4:10, leaving 50 s spare). Press **
 **Next →** after each step. **Reset demo** restores Alex, 5 choices, risk-aware routing, explicit
 confirmation and healthy signals. The Demo tab never presses YES/SEND for the patient.
 
+**Pre-demo checklist (live A/B fairness)**
+- The live NeuroSteno arm ranks with the seed profile **plus saved simulated history** in
+  `backend/data/runtime/history_<profile>_simulated.json` (git-ignored, survives restarts; the UI cannot reset
+  it). Every rehearsal adds to it. For a clean demo, stop the backend, move those files aside, and restart.
+  The EXACT counts and the benchmark always use seed profiles only.
+- After a live run, check the "Conditions recorded" table says **identical except routing ✓**. If a live count
+  differs from the EXACT count, the card says so; leave it visible and explain it as history or retries.
+- The live run restarts the simulator (default signal settings). Re-apply any simulation tweaks afterwards.
+
+
 0. **The idea in 30 seconds (30 s).** Click **Fixed menu vs NeuroSteno** (top centre, or the Demo tab
    button). The live patient screen stays on the left. On the right is the same message for the same patient
    (default: Jordan, "Turn me left", 2 targets): **Traditional fixed menu** vs **NeuroSteno**, with two big
@@ -17,10 +27,17 @@ confirmation and healthy signals. The Demo tab never presses YES/SEND for the pa
    urgent routes. Below it, "How NeuroSteno decides": (1) why these phrases (probabilities, shortcuts kept
    only if they lower expected time, urgent routes always on), (2) why 2/3/5 targets (expected time per
    count, *recommended* vs *in use*), (3) how uncertainty works (live phase outlined: evidence →
-   highlight on the same screen → YES/NO → final SEND). Optional: **Run live A/B (simulated EEG)**, where the
-   virtual patient composes the message with NeuroSteno and then the fixed menu (about 2 min). Its result is
-   tagged MEASURED · SIMULATED and is one illustrative run, not a benchmark. Switch back to
-   **Patient + operator**.
+   highlight on the same screen → YES/NO → final SEND).
+   **Benchmark (controlled, simulated):** each card shows the like-for-like benchmark pair (A*n* fixed menu vs
+   B*n* context routing, same *n* and decoder, 10 runs, same seed and signal level). Below that are all
+   conditions and the pooled table. Say both halves out loud: the fixed menus are fast but send messages
+   while the patient attends nothing (e.g. A5 ≈ 54/hour), while full NeuroSteno (D) sends none and is slower;
+   D+ is about as fast as A5. Simulated EEG and a perfect-intent virtual patient only (see Limitations).
+   Optional: **Run live: NeuroSteno, then fixed menu** (about 2 min). It is a **fixed-order demonstration,
+   one run each, not a controlled experiment**; the benchmark is the controlled comparison. The panel lists
+   what is held equal (simulator restarted with seed 4242 and default signal settings, mistakes off, same
+   patient/message/targets/policy) and what is not (saved history, noise realisation, order), and shows the
+   recorded conditions of both arms. Switch back to **Patient + operator**.
 1. **Honesty first (20 s).** *Switch to Simulated.* The patient screen gets a **striped purple frame**,
    the **SIMULATED EEG · synthetic signals** badge, and the caption "Synthetic signals from a virtual
    patient. Not a person's brain activity." REAL has a solid green frame and a *Calibrated / NOT

@@ -43,6 +43,9 @@ export interface LogEvent { time: number; kind: string; text: string }
 export interface State {
   version: number
   server_time?: number
+  /** Contract v1.3. messages_sent_without_final_confirmation is 0 by construction (the engine refuses
+   *  such sends); blocked_unconfirmed_send_attempts is the measured counter. */
+  safety_invariants?: { messages_sent_without_final_confirmation: number; blocked_unconfirmed_send_attempts?: number }
   mode: { kind: 'real' | 'simulated' | 'replay' | 'none'; label: string; origin: string; is_real_eeg: boolean; replay_of: string | null
     /** Contract v1.2: calibrated thresholds exist for this origin AND the current n_choices. */
     calibrated?: boolean
