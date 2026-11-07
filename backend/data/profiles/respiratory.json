@@ -1,0 +1,22 @@
+{
+  "id": "respiratory",
+  "display_name": "Sam (synthetic) - respiratory support",
+  "summary": "Uses non-invasive ventilation (BiPAP) at night; frequent mask and secretion needs.",
+  "synthetic": true,
+  "preferences": [
+    {"node": "call-caregiver/respiratory-therapist/come-now", "weight": 0.75, "reason": "respiratory therapist manages the BiPAP"}
+  ],
+  "caregiver_info": {
+    "notes": ["BiPAP mask can leak when turned to the right.", "Secretions worse in the morning.", "Call the nurse for any breathing request marked 'right now'."],
+    "pinned": [
+      {"node": "breathing/suction-mouth", "reason": "frequent secretions"},
+      {"node": "call-caregiver/nurse/come-now", "reason": "fast escalation for breathing problems"}
+    ]
+  },
+  "prior_confirmed_messages": [
+    {"node": "breathing/adjust-mask/now", "text": "Please adjust my breathing mask. I need this right now.", "hours_ago": 10},
+    {"node": "breathing/adjust-mask/soon", "text": "Please adjust my breathing mask. It can wait a few minutes.", "hours_ago": 40}
+  ],
+  "recent_requests": [{"node": "breathing/suction-mouth/now", "hours_ago": 2}],
+  "session_context": {"tags": ["on-niv"]}
+}

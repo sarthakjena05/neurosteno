@@ -1,0 +1,21 @@
+{
+  "id": "mobility",
+  "display_name": "Jordan (synthetic) - mobility assistance",
+  "summary": "Limited mobility; frequent repositioning and recurring left-leg discomfort.",
+  "synthetic": true,
+  "preferences": [
+    {"node": "comfort/position/turn-left", "weight": 1.0, "reason": "prefers lying on the left side"},
+    {"node": "comfort/position/pillow/between-knees", "weight": 0.5, "reason": "pillow between knees helps hip pain"}
+  ],
+  "caregiver_info": {
+    "notes": ["Needs repositioning every 2 hours.", "Left leg cramps most evenings.", "Answers yes/no reliably when rested."],
+    "pinned": [{"node": "pain/legs-feet/left-leg/reposition", "reason": "recurring left leg discomfort"}]
+  },
+  "prior_confirmed_messages": [
+    {"node": "pain/legs-feet/left-leg/reposition/skip", "text": "My left leg hurts. Please help me reposition.", "hours_ago": 30},
+    {"node": "pain/legs-feet/left-leg/reposition/moderate", "text": "My left leg hurts quite a bit. Please help me reposition.", "hours_ago": 54},
+    {"node": "comfort/position/turn-left", "text": "Please turn me onto my left side.", "hours_ago": 20}
+  ],
+  "recent_requests": [{"node": "comfort/position/turn-left", "hours_ago": 3}],
+  "session_context": {"tags": []}
+}

@@ -1,0 +1,11 @@
+{
+  "id": "new-patient",
+  "display_name": "Alex (synthetic) - new patient",
+  "summary": "No history yet. General medical categories only; no personalised shortcuts.",
+  "synthetic": true,
+  "preferences": [],
+  "caregiver_info": {"notes": ["First session. Communication preferences not yet known."], "pinned": []},
+  "prior_confirmed_messages": [],
+  "recent_requests": [],
+  "session_context": {"tags": []}
+}
