@@ -7,6 +7,9 @@ import {
 import { originLabel } from '../mode'
 import type { State } from '../types'
 import { AB_SEED, type ArmResult, conditionsMatch, type LiveAB as LiveABApi, startBlocker } from '../useLiveAB'
+import { readInputs, readMultimodalBench } from '../multimodal'
+import { MethodTable, PolicyCard } from './Inputs'
+import MultimodalBench from './MultimodalBench'
 import { ModeBadge } from './PatientView'
 
 /**
@@ -526,6 +529,7 @@ export default function ComparePage({ s, ab }: { s: State; ab: LiveABApi }) {
           <Delta row={row} />
           <SafetyInvariant s={s} />
           <BenchPanel bench={bench} scenario={scenario} message={message} n={n} snr={snr} setSnr={setSnr} />
+          <MultimodalBench mm={readMultimodalBench(bench)} />
           <LiveAB s={s} node={node} profile={profile} n={n} ab={ab} />
         </>
       )}
@@ -536,6 +540,12 @@ export default function ComparePage({ s, ab }: { s: State; ab: LiveABApi }) {
         <WhyPhrases s={s} profileWanted={profile} />
         <WhyTargets s={s} />
         <Uncertainty s={s} />
+        <section className="flex flex-col gap-2 rounded-2xl border border-line bg-panel p-4 xl:col-span-3" aria-labelledby="why-input" data-testid="why-input">
+          <h3 id="why-input" className="text-lg font-black">4 · Which input method, and why</h3>
+          <p className="text-sm text-muted">Movement is never assumed. EEG is always available; a head nod / shake / tilt is only used after it passes a calibration for this patient and a caregiver turns it on. If brain and movement signals disagree, or movement disturbs the EEG, nothing is selected.</p>
+          <PolicyCard vm={readInputs(s)} />
+          <MethodTable vm={readInputs(s)} />
+        </section>
       </div>
     </div>
   )

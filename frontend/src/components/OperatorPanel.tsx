@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { command, get, post } from '../api'
 import DemoGuide from './DemoGuide'
+import InputsTab from './Inputs'
 import SignalCheck from './SignalCheck'
 import { flicker } from '../flicker'
 import type { State } from '../types'
 
-const TABS = ['Demo', 'Session', 'Simulation', 'Signal', 'Calibration', 'Routing', 'Metrics', 'Log'] as const
+const TABS = ['Demo', 'Session', 'Inputs', 'Simulation', 'Signal', 'Calibration', 'Routing', 'Metrics', 'Log'] as const
 type Tab = (typeof TABS)[number]
 
 function Btn({ children, onClick, active, disabled, tone, title }: { children: React.ReactNode; onClick: () => void; active?: boolean; disabled?: boolean; tone?: string; title?: string }) {
@@ -407,6 +408,7 @@ export default function OperatorPanel({ s, onOpenCompare }: { s: State; onOpenCo
       <div id="optab-panel" role="tabpanel" aria-labelledby={`optab-${tab}`} tabIndex={0} className="flex-1 overflow-y-auto pr-1">
         {tab === 'Demo' && <DemoGuide s={s} onGoTab={goTab} onOpenCompare={onOpenCompare} />}
         {tab === 'Session' && <SessionTab s={s} />}
+        {tab === 'Inputs' && <InputsTab s={s} />}
         {tab === 'Simulation' && <SimulationTab s={s} />}
         {tab === 'Signal' && <SignalTab s={s} />}
         {tab === 'Calibration' && <CalibrationTab s={s} />}

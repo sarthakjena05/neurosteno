@@ -96,6 +96,11 @@ export const DEMO_STEPS: DemoStep[] = [
     actions: [],
     goTab: 'Signal',
   },
+  {
+    id: 'inputs', title: 'Every patient is different', budget_s: 20, goTab: 'Inputs',
+    say: ['“NeuroSteno doesn’t assume every patient has the same abilities. It calibrates available brain and movement signals, then selects the fastest reliable communication method for that patient.”', 'EEG-only example (works today, simulated): gestures show “not available”, so movement is never assumed. Hybrid example: Inputs tab, UI preview, “reliable residual head movement”. It is MOCK until the backend publishes gesture input. Neither is validated; the per-patient benchmark shows NOT MEASURED until it exists.'],
+    actions: [],
+  },
 ]
 
 export const DEMO_TOTAL_S = 300

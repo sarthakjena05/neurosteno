@@ -165,7 +165,7 @@ describe('judge demo guide', () => {
   it('fits the five-minute slot with time to spare', () => {
     const total = DEMO_STEPS.reduce((a, d) => a + d.budget_s, 0)
     expect(total).toBeLessThanOrEqual(DEMO_TOTAL_S)
-    expect(DEMO_STEPS.map((d) => d.id)).toEqual(['novelty', 'honesty', 'home', 'select', 'confirm', 'context', 'failure', 'safety', 'hardware'])
+    expect(DEMO_STEPS.map((d) => d.id)).toEqual(['novelty', 'honesty', 'home', 'select', 'confirm', 'context', 'failure', 'safety', 'hardware', 'inputs'])
   })
 
   it('step buttons send ordinary contract commands', async () => {

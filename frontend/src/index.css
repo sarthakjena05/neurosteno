@@ -17,6 +17,9 @@
   /* Comparison series (validated with dataviz validate_palette.js on #141b2e: CVD dE 26.8, all pass) */
   --color-fixed: #d95926;
   --color-neuro: #3987e5;
+  /* multimodal strategies, same validated order (orange, blue, aqua, yellow): all checks pass on #141b2e */
+  --color-hybrid: #199e70;
+  --color-optimized: #c98500;
 }
 
 html, body, #root { height: 100%; }

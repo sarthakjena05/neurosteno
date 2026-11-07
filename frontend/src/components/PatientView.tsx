@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import { command } from '../api'
 import { flicker, type Stim } from '../flicker'
 import { speakCue } from '../speech'
+import { readInputs } from '../multimodal'
+import { GestureCalibrationView, InputStrip } from './Inputs'
 import { calibratedForCurrent, calibrationRequired, isReplayedMessage, MODE_FRAME, modeCaption, originLabel } from '../mode'
 import type { Slot, State, Target } from '../types'
 
@@ -345,6 +347,7 @@ function CalibrationTargets({ s }: { s: State }) {
 }
 
 export default function PatientView({ s }: { s: State }) {
+  const inputs = readInputs(s)
   const highlighted = s.phase === 'PREDICTION_HIGHLIGHTED'
   const review = s.phase === 'MESSAGE_REVIEW' && s.review
   return (
@@ -359,6 +362,7 @@ export default function PatientView({ s }: { s: State }) {
         <p data-testid="mode-caption" className="w-full text-sm text-muted">{modeCaption(s)}</p>
       </header>
       <NeuroRouteStrip s={s} />
+      <InputStrip vm={inputs} action={s.attempt?.kind ?? null} />
 
       <nav aria-label="Where you are" className="flex flex-wrap items-center gap-2 text-xl">
         <span className="font-bold">Home</span>
@@ -436,6 +440,11 @@ export default function PatientView({ s }: { s: State }) {
         </Overlay>
       )}
       {s.calibration && <CalibrationOverlay s={s} />}
+      {inputs.gestureCal && (
+        <Overlay tone="bg-ink/95" label="Head movement check" testId="gesture-cal-overlay">
+          <GestureCalibrationView cal={inputs.gestureCal} />
+        </Overlay>
+      )}
       {s.emergency && (
         <Overlay tone="bg-red-800/95" label="Help requested (demo control, not a certified alarm)" role="alertdialog">
           <p className="text-6xl font-black">HELP REQUESTED</p>

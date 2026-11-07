@@ -3,7 +3,7 @@
 Setup: `start-backend.ps1` + `start-frontend.ps1`, browser at http://localhost:5173 (fullscreen, F11).
 Patient screen on the left, operator panel on the right. The operator panel opens on the **Demo** tab:
 each step below appears there with its talking points, one-click buttons (ordinary API commands)
-and a **5:00 timer** (step budgets add up to 4:10, leaving 50 s spare). Press **Start timer**, then
+and a **5:00 timer** (step budgets add up to 4:30, leaving 30 s spare). Press **Start timer**, then
 **Next →** after each step. **Reset demo** restores Alex, 5 choices, risk-aware routing, explicit
 confirmation and healthy signals. The Demo tab never presses YES/SEND for the patient.
 
@@ -71,6 +71,22 @@ confirmation and healthy signals. The Demo tab never presses YES/SEND for the pa
    **Signal** tab: the electrode map (contact score is a signal heuristic, **not impedance**) and the
    **Eyes open/closed check** (no flicker, spoken cues). On simulated data its result is labelled
    "pipeline check only"; only a real-origin result may say "brain activity confirmed".
+
+9. **Every patient is different (20 s).** Say: *"NeuroSteno doesn't assume every patient has the same
+   abilities. It calibrates available brain and movement signals, then selects the fastest reliable
+   communication method for that patient."* Open the operator **Inputs** tab.
+   - **EEG-only example (works today, simulated):** a patient with no reliable head movement. The mode is
+     **EEG-only**, every choice and every YES/NO is by SSVEP, and head nod / shake / tilt show *not available*.
+     Movement is never assumed: the headset's motion-sensor channels are listed as "present in the data
+     stream, not evaluated".
+   - **Hybrid example (design preview, not yet backed by the backend):** pick *Patient with reliable residual
+     head movement* under **UI preview with mock states**. Point at the **MOCK · UI PREVIEW · NOT BACKEND
+     STATE** banner: after a passing nod/shake check *and* a caregiver switch, the patient could answer
+     YES with a nod; EEG still picks the choice, and conflicting signals abstain (*Conflicting signals* mock).
+   - Neither example is validated. The **"Which method suits which patient?"** section of the comparison page
+     shows *NOT MEASURED* for all four strategies (Fixed EEG-only, Adaptive EEG-only, Hybrid EEG + IMU,
+     Optimized multimodal) until the backend publishes the multimodal benchmark; then it shows which method
+     is best per patient group, from the data.
 
 Accessibility notes for Q&A: the patient screen uses Atkinson Hyperlegible and very large
 targets; operator tabs, overlays (dialog / alertdialog / status) and the evidence progress bar

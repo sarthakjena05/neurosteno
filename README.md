@@ -14,7 +14,7 @@ g.tec Unicorn Hybrid Black and the official UnicornPy API.
 | UnicornPy acquisition (UN-2024.09.36 over Intel Bluetooth) | ✅ 10 s streamed: 2500 samples @ 250 Hz, 0 dropped (counter-verified) |
 | Real EEG signal validity | ⚠️ **Not yet.** Bring-up recording had all 8 channels identical (corr 1.000) with large DC drift: headset not worn / ear-clip reference not attached. Must be redone with the headset on. |
 | Real-EEG SSVEP classification | ❌ **Not validated.** REAL mode refuses to communicate until calibrated on real data. |
-| SIMULATED + REPLAY modes, full UI, phrase engine, routing | ✅ working; backend 50 tests, frontend 67 tests passing |
+| SIMULATED + REPLAY modes, full UI, phrase engine, routing | ✅ working; backend 50 tests, frontend 85 tests passing |
 | c-VEP (experimental mode) | ⏳ not started; stimulus math (cyclic-shift codes, frame-locked renderer) is in place |
 
 ## Architecture
@@ -126,7 +126,7 @@ currently shows a driver error in Device Manager.
 
 ```powershell
 cd backend;  .\.venv\Scripts\python -m pytest -q      # 50 tests, ~40 s
-cd frontend; npm test                                   # 67 tests
+cd frontend; npm test                                   # 85 tests
 ```
 Covered: catalog quality (≥1,000 unique phrases), reachability of every phrase for 2/3/5 targets ×
 3 profiles × static/adaptive, slot packing never loops, Back/Home/Undo, wrong prediction → rejection
@@ -135,7 +135,8 @@ Bluetooth dropout / bad electrodes pause communication, provisional policy, adap
 emergency demo control, origin-separated metrics, FBCCA, calibration, quality, blink refractory,
 record/replay round trip, API + WebSocket smoke, and UI rendering (home, highlight, review, modes,
 origin frames / calibration chip / sent-origin tags, NeuroRoute strip, ARIA roles, judge Demo tab, electrode map, eyes open/closed check,
-fixed-menu vs NeuroSteno comparison with provenance tags, live A/B runner).
+fixed-menu vs NeuroSteno comparison with provenance tags, live A/B runner, multimodal input UI
+(EEG-only default, gesture calibration, policy, per-patient benchmark) behind the proposed v2.0 contract).
 
 ## Known limitations
 
