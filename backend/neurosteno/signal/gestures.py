@@ -139,7 +139,9 @@ def segments(speed: np.ndarray, thr: float) -> list[tuple[int, int]]:
             segs.append([s, e])
     pad = int(PAD_S * FS_D)
     n = len(speed)
-    return [(max(0, s - pad), min(n, e + pad)) for s, e in segs if e - s >= 2]
+    # flatnonzero returns NumPy integers. These indices flow into event sample
+    # fields and must be native integers for both REST and WebSocket JSON.
+    return [(int(max(0, s - pad)), int(min(n, e + pad))) for s, e in segs if e - s >= 2]
 
 
 def _lobes(p: np.ndarray) -> int:

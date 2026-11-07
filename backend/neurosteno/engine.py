@@ -581,7 +581,7 @@ class Engine(InteractionMixin):
         no_label = "No, change it" if kind == "review" else "No, not this"
         return [Target("yes", yes_label, self.cfg.confirm_freqs[0]), Target("no", no_label, self.cfg.confirm_freqs[1])]
 
-    def _start_attempt(self, kind: str) -> None:
+    def _start_attempt(self, kind: str, *, retry: bool = False) -> None:
         src = self.source
         if src is None:
             return
@@ -602,7 +602,10 @@ class Engine(InteractionMixin):
             if mistake:
                 self._task_count("injected_mistakes")
         self.attempt = Attempt(kind, targets, src.total_samples, stopper, self.clock(), mistake)
-        self.sim_gaze_key = None
+        # A retry is the same screen and the patient is still attending the
+        # same target. New screens require a fresh gaze (especially final SEND).
+        if not retry:
+            self.sim_gaze_key = None
         if kind == "choose":
             self._enter(Phase.EVIDENCE_COLLECTION)
         elif kind == "confirm":
@@ -708,15 +711,15 @@ class Engine(InteractionMixin):
         elif a.kind == "confirm":
             self.confirm_abstains += 1
             if self.provisional_deadline is not None:
-                self._start_attempt("confirm")  # keep listening for a correction until the window ends
+                self._start_attempt("confirm", retry=True)  # same correction screen
             elif self.confirm_abstains >= self.cfg.confirm_attempts:
                 self._reject("No clear confirmation, so the choice was NOT accepted", kind="not_confirmed")
             else:
                 self.log("decision", "Confirmation unclear; asking again")
-                self._start_attempt("confirm")
+                self._start_attempt("confirm", retry=True)
         elif a.kind == "review":
             self.log("decision", "Final confirmation unclear; message NOT sent, asking again")
-            self._start_attempt("review")
+            self._start_attempt("review", retry=True)
 
     def _evidence(self, kind: str, decision_s: float | None = None) -> None:
         """Live evidence for signal-adaptive n: the patient's own YES/NO on a highlight."""

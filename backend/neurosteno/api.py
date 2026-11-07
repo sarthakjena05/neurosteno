@@ -59,12 +59,18 @@ async def _loop() -> None:
         loop_t = asyncio.get_event_loop().time()
         if clients and loop_t - last_sent >= 0.1:
             last_sent = loop_t
-            msg = json.dumps({"type": "state", "state": snapshot(engine)})
-            for ws in list(clients):
-                try:
-                    await ws.send_text(msg)
-                except Exception:
-                    clients.discard(ws)
+            try:
+                msg = json.dumps({"type": "state", "state": snapshot(engine)})
+            except Exception:
+                # State production must not kill acquisition/decoding. Log the
+                # traceback and retry next frame; the UI's stale guard pauses it.
+                log.exception("state broadcast serialization failed")
+            else:
+                for ws in list(clients):
+                    try:
+                        await ws.send_text(msg)
+                    except Exception:
+                        clients.discard(ws)
         await asyncio.sleep(0.05)
 
 
