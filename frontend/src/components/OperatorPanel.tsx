@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
-import { command, get, post } from '../api'
+import { command, type EngineConnection, get, post } from '../api'
+import DemoGuide from './DemoGuide'
+import InputsTab from './Inputs'
+import Preflight from './Preflight'
+import SignalCheck from './SignalCheck'
 import { flicker } from '../flicker'
 import type { State } from '../types'
 
-const TABS = ['Session', 'Simulation', 'Signal', 'Calibration', 'Routing', 'Metrics', 'Log'] as const
+const TABS = ['Demo', 'Session', 'Inputs', 'Simulation', 'Signal', 'Calibration', 'Routing', 'Metrics', 'Log'] as const
 type Tab = (typeof TABS)[number]
 
 function Btn({ children, onClick, active, disabled, tone, title }: { children: React.ReactNode; onClick: () => void; active?: boolean; disabled?: boolean; tone?: string; title?: string }) {
@@ -40,7 +44,7 @@ function PhrasePicker({ onPick, placeholder }: { onPick: (id: string) => void; p
   }, [q])
   return (
     <div className="flex flex-col gap-1">
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder}
+      <input aria-label={placeholder} value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder}
         className="rounded-lg border border-line bg-ink px-2 py-1.5 text-sm" />
       {res.map((r) => (
         <button key={r.node_id} type="button" onClick={() => { onPick(r.node_id); setQ(''); setRes([]) }}
@@ -77,7 +81,7 @@ function SessionTab({ s }: { s: State }) {
       <Section title="EEG source">
         <div className="flex flex-wrap gap-2">
           <Btn active={s.mode.kind === 'simulated'} onClick={() => run(post('/api/mode', { mode: 'simulated' }))}>Simulated</Btn>
-          <Btn active={s.mode.kind === 'off' as string} onClick={() => run(post('/api/mode', { mode: 'off' }))}>Off</Btn>
+          <Btn active={s.mode.kind === 'none'} onClick={() => run(post('/api/mode', { mode: 'off' }))}>Off</Btn>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Btn onClick={() => run(get('/api/hardware').then(setHw))}>Hardware check</Btn>
@@ -97,7 +101,7 @@ function SessionTab({ s }: { s: State }) {
         {s.source?.status.error && <p className="rounded bg-red-900 p-2 text-sm">{s.source.status.error}</p>}
       </Section>
       <Section title="Patient profile (synthetic)">
-        <select value={s.profile.id} onChange={(e) => run(command('set_profile', { id: e.target.value }))} className="rounded-lg border border-line bg-ink px-2 py-1.5">
+        <select aria-label="Patient profile" value={s.profile.id} onChange={(e) => run(command('set_profile', { id: e.target.value }))} className="rounded-lg border border-line bg-ink px-2 py-1.5">
           {profiles.map((p) => <option key={p.id} value={p.id}>{p.display_name}</option>)}
         </select>
         <p className="text-xs text-muted">{s.profile.summary}</p>
@@ -147,7 +151,7 @@ function SessionTab({ s }: { s: State }) {
       </Section>
       <Section title="Messages confirmed by the patient">
         {s.sent.length === 0 && <p className="text-xs text-muted">None yet.</p>}
-        {s.sent.map((m) => <p key={m.time} className="text-sm">“{m.text}” <span className="text-xs text-muted">({m.data_origin}, {new Date(m.time * 1000).toLocaleTimeString()})</span></p>)}
+        {s.sent.map((m) => <p key={m.time} className="text-sm">“{m.text}” <span className="text-xs text-muted">({m.data_origin}{m.source === 'replay' ? ', replayed' : ''}, {new Date(m.time * 1000).toLocaleTimeString()})</span></p>)}
       </Section>
     </div>
   )
@@ -207,6 +211,9 @@ function SignalTab({ s }: { s: State }) {
   const last = s.attempt?.last
   return (
     <div className="flex flex-col gap-3">
+      <Section title="Signal check: electrodes + eyes open/closed">
+        <SignalCheck s={s} />
+      </Section>
       <Section title="Signal quality (independent of classification)">
         {!q.channels?.length && <p className="text-sm text-muted">No data.</p>}
         <div className="grid grid-cols-4 gap-1 text-xs">
@@ -347,9 +354,9 @@ function MetricsTab({ s }: { s: State }) {
       </Section>
       <Section title="Summary (grouped by data origin; real, simulated and replay never mixed)">
         <table className="text-xs">
-          <thead><tr><th>origin</th><th>routing</th><th>profile</th><th>n</th><th>msgs</th><th>sel</th><th>rej</th><th>time s</th><th>correct</th></tr></thead>
+          <thead><tr><th>origin</th><th>source</th><th>routing</th><th>profile</th><th>n</th><th>msgs</th><th>sel</th><th>rej</th><th>time s</th><th>correct</th></tr></thead>
           <tbody>{s.metrics.summary.map((r: any, i) => (
-            <tr key={i} className={r.origin === 'real' ? 'text-green-300' : ''}><td>{r.origin}</td><td>{r.routing_mode}</td><td>{r.profile}</td><td>{r.n}</td><td>{r.messages}</td><td>{r.mean_selections}</td><td>{r.mean_rejected_predictions}</td><td>{r.mean_completion_s}</td><td>{r.correct_final}</td></tr>
+            <tr key={i} className={r.origin === 'real' && r.source !== 'replay' ? 'text-green-300' : ''}><td>{r.origin}</td><td>{r.source ?? '-'}</td><td>{r.routing_mode}</td><td>{r.profile}</td><td>{r.n}</td><td>{r.messages}</td><td>{r.mean_selections}</td><td>{r.mean_rejected_predictions}</td><td>{r.mean_completion_s}</td><td>{r.correct_final}</td></tr>
           ))}</tbody>
         </table>
       </Section>
@@ -372,19 +379,42 @@ function LogTab({ s }: { s: State }) {
   )
 }
 
-export default function OperatorPanel({ s }: { s: State }) {
-  const [tab, setTab] = useState<Tab>('Session')
+export default function OperatorPanel({ s, link, onOpenCompare }: { s: State; link?: Pick<EngineConnection, 'connected' | 'stale' | 'reconnects' | 'badMessages'>; onOpenCompare?: () => void }) {
+  const [tab, setTab] = useState<Tab>('Demo')
+  const goTab = (t: string) => { if ((TABS as readonly string[]).includes(t)) setTab(t as Tab) }
+  // WAI-ARIA tabs pattern: arrow keys / Home / End move between tabs.
+  const onTabKey = (e: React.KeyboardEvent<HTMLButtonElement>, i: number) => {
+    const j = e.key === 'ArrowRight' ? (i + 1) % TABS.length : e.key === 'ArrowLeft' ? (i - 1 + TABS.length) % TABS.length
+      : e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : -1
+    if (j < 0) return
+    e.preventDefault()
+    setTab(TABS[j])
+    document.getElementById(`optab-${TABS[j]}`)?.focus()
+  }
   return (
     <aside className="flex h-full flex-col gap-2 overflow-hidden rounded-3xl border border-line bg-panel p-3" aria-label="Operator and caregiver panel">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-black">Operator panel</h2>
         <span className="text-xs text-muted">phase {s.phase} · {s.vocabulary.phrases} phrases</span>
       </div>
-      <div className="flex flex-wrap gap-1" role="tablist">
-        {TABS.map((t) => <Btn key={t} active={tab === t} onClick={() => setTab(t)}>{t}</Btn>)}
+      <div className="flex flex-wrap gap-1" role="tablist" aria-label="Operator panel sections">
+        {TABS.map((t, i) => (
+          <button key={t} id={`optab-${t}`} type="button" role="tab" aria-selected={tab === t} aria-controls="optab-panel"
+            tabIndex={tab === t ? 0 : -1} onClick={() => setTab(t)} onKeyDown={(e) => onTabKey(e, i)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${tab === t ? 'bg-sky-600' : 'bg-panel2 hover:bg-line'}`}>
+            {t}
+          </button>
+        ))}
       </div>
-      <div className="flex-1 overflow-y-auto pr-1">
+      <div id="optab-panel" role="tabpanel" aria-labelledby={`optab-${tab}`} tabIndex={0} className="flex-1 overflow-y-auto pr-1">
+        {tab === 'Demo' && (
+          <div className="flex flex-col gap-3">
+            {link && <Preflight s={s} link={link} />}
+            <DemoGuide s={s} onGoTab={goTab} onOpenCompare={onOpenCompare} />
+          </div>
+        )}
         {tab === 'Session' && <SessionTab s={s} />}
+        {tab === 'Inputs' && <InputsTab s={s} />}
         {tab === 'Simulation' && <SimulationTab s={s} />}
         {tab === 'Signal' && <SignalTab s={s} />}
         {tab === 'Calibration' && <CalibrationTab s={s} />}

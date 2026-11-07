@@ -14,6 +14,12 @@
   --color-real: #16a34a;
   --color-sim: #8b5cf6;
   --color-replay: #f59e0b;
+  /* Comparison series (validated with dataviz validate_palette.js on #141b2e: CVD dE 26.8, all pass) */
+  --color-fixed: #d95926;
+  --color-neuro: #3987e5;
+  /* multimodal strategies, same validated order (orange, blue, aqua, yellow): all checks pass on #141b2e */
+  --color-hybrid: #199e70;
+  --color-optimized: #c98500;
 }
 
 html, body, #root { height: 100%; }
@@ -29,9 +35,48 @@ body {
    luminance follows the exact stimulation frequency/code. */
 .stim-layer { position: absolute; inset: 0; pointer-events: none; background: #fff; opacity: 0; border-radius: inherit; }
 
-@keyframes pulse-ring { 0%, 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7); } 50% { box-shadow: 0 0 0 14px rgba(250, 204, 21, 0); } }
-.highlight-ring { animation: pulse-ring 1.2s ease-in-out infinite; }
-
 @media (prefers-reduced-motion: reduce) {
-  .highlight-ring { animation: none; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
 }
+
+/* Data-origin frame around the patient screen: REAL / SIMULATED / REPLAY are never confusable.
+   Simulated and replay frames are striped as well as coloured, so the difference does not
+   rely on colour alone. */
+.mode-frame-real { border-color: var(--color-real); }
+.mode-frame-none { border-color: var(--color-line); }
+.mode-frame-sim, .mode-frame-replay { border-style: solid; border-image-slice: 1; }
+.mode-frame-sim { border-image-source: repeating-linear-gradient(45deg, var(--color-sim) 0 18px, #3b2a6b 18px 30px); }
+.mode-frame-replay { border-image-source: repeating-linear-gradient(45deg, var(--color-replay) 0 18px, #5a3a05 18px 30px); }
+/* border-image drops border-radius; keep the frame square for those modes rather than clip it. */
+.mode-frame-sim, .mode-frame-replay { border-radius: 0; }
+
+/* Keyboard / switch-access users: always-visible focus. */
+:focus-visible { outline: 4px solid #38bdf8; outline-offset: 3px; }
+button:focus:not(:focus-visible) { outline: none; }
+
+@media (forced-colors: active) {
+  [data-highlighted='true'] { outline: 6px solid Highlight; }
+}
+
+/* Predicted target: thick STATIC outline (no animation, no scaling) so stimulation geometry and
+   timing are unchanged while the patient decides YES / NO. */
+.predicted-target { outline: 8px solid var(--color-pending); outline-offset: 4px; }
+
+/* High-contrast patient mode: pure black / white surfaces, brighter accents, thicker outlines.
+   Overrides the theme tokens, so every Tailwind colour utility follows. */
+.hc {
+  --color-ink: #000000;
+  --color-panel: #000000;
+  --color-panel2: #141414;
+  --color-line: #ffffff;
+  --color-text: #ffffff;
+  --color-muted: #e6e6e6;
+  --color-pending: #ffff00;
+  --color-accept: #00ff66;
+  --color-reject: #ff4d4d;
+  background: #000;
+  color: #fff;
+}
+.hc [data-testid^='slot-'], .hc [data-testid^='decision-'] { border-width: 6px; }
+.hc .predicted-target { outline-width: 12px; }
+.hc :focus-visible { outline: 5px solid #ffff00; }

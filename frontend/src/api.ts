@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { State } from './types'
+import { type NormalizedState, normalizeState } from './normalize'
 
 export async function command(action: string, params: Record<string, unknown> = {}): Promise<unknown> {
   const r = await fetch('/api/command', {
@@ -28,11 +28,30 @@ export async function get<T = any>(path: string): Promise<T> {
   return r.json()
 }
 
-/** Live engine state over WebSocket, with automatic reconnect. */
-export function useEngineState(): { state: State | null; connected: boolean } {
-  const [state, setState] = useState<State | null>(null)
+/** The server pushes ~10 Hz; no state for this long means the view is stale. */
+export const STALE_AFTER_MS = 2500
+/** An open socket that stays silent this long is closed and reconnected. */
+export const FORCE_RECONNECT_MS = 6000
+
+export interface EngineConnection {
+  state: NormalizedState | null
+  /** socket open */
+  connected: boolean
+  /** no fresh state recently (or never): the screen must not look live */
+  stale: boolean
+  reconnects: number
+  badMessages: number
+}
+
+/** Live engine state over WebSocket: safe parsing, normalisation, staleness, automatic reconnect. */
+export function useEngineState(): EngineConnection {
+  const [state, setState] = useState<NormalizedState | null>(null)
   const [connected, setConnected] = useState(false)
+  const [stale, setStale] = useState(true)
+  const [reconnects, setReconnects] = useState(0)
+  const [badMessages, setBad] = useState(0)
   const retry = useRef(0)
+  const lastMsg = useRef(0)
 
   useEffect(() => {
     let ws: WebSocket | null = null
@@ -40,19 +59,38 @@ export function useEngineState(): { state: State | null; connected: boolean } {
     let timer: number | undefined
     const connect = () => {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-      ws = new WebSocket(`${proto}://${location.host}/ws`)
+      try {
+        ws = new WebSocket(`${proto}://${location.host}/ws`)
+      } catch {
+        timer = window.setTimeout(connect, Math.min(5000, 500 * 2 ** retry.current++))
+        return
+      }
       ws.onopen = () => { setConnected(true); retry.current = 0 }
       ws.onmessage = (ev) => {
-        const msg = JSON.parse(ev.data)
-        if (msg.type === 'state') setState(msg.state)
+        let msg: { type?: string; state?: unknown }
+        try { msg = JSON.parse(String(ev.data)) } catch { setBad((n) => n + 1); return }
+        if (msg?.type !== 'state') return
+        lastMsg.current = Date.now()
+        setStale(false)
+        setState(normalizeState(msg.state))
       }
+      ws.onerror = () => { /* onclose follows and schedules the reconnect */ }
       ws.onclose = () => {
         setConnected(false)
-        if (!closed) timer = window.setTimeout(connect, Math.min(5000, 500 * 2 ** retry.current++))
+        setStale(true)
+        if (!closed) {
+          setReconnects((n) => n + 1)
+          timer = window.setTimeout(connect, Math.min(5000, 500 * 2 ** retry.current++))
+        }
       }
     }
     connect()
-    return () => { closed = true; window.clearTimeout(timer); ws?.close() }
+    const watchdog = window.setInterval(() => {
+      const age = Date.now() - lastMsg.current
+      if (lastMsg.current && age > STALE_AFTER_MS) setStale(true)
+      if (lastMsg.current && age > FORCE_RECONNECT_MS && ws?.readyState === WebSocket.OPEN) ws.close()
+    }, 500)
+    return () => { closed = true; window.clearTimeout(timer); window.clearInterval(watchdog); ws?.close() }
   }, [])
-  return { state, connected }
+  return { state, connected, stale, reconnects, badMessages }
 }
