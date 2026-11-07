@@ -79,6 +79,8 @@ export interface State {
     channels?: ChannelQuality[]; common_mode?: number | null; stalled?: boolean; problem?: string | null
     signal_ok?: boolean; good_decoding_channels?: number; required_decoding_channels?: number; decoding_labels?: string[]
     seconds_since_last_sample?: number | null
+    noise?: { injected_uv: number; processed_band_noise_uv: number; raw_band_noise_uv: number; snr_loss_db: number
+      snr_loss_db_smoothed: number; band_hz: number[]; channels: string[]; stream: string }
   }
   decoder: { allowed_choices: number[]; stopping: Record<string, unknown>; calibration: Record<string, Record<string, unknown>> }
   config: Record<string, unknown> & { n_choices: number; policy: string; effective_policy: string; routing_mode: string; auto_adapt: boolean }
@@ -89,7 +91,12 @@ export interface State {
   task: null | (Record<string, unknown> & { elapsed_s: number; selections: number; rejected_predictions: number })
   intended: null | { node_id: string; text: string }
   metrics: { recent: Metric[]; summary: Record<string, unknown>[] }
-  adaptation: { auto: boolean; recent: string[]; last_change: null | { from: number; to: number; reason: string; time?: number } }
+  adaptation: { auto: boolean; recent: string[]; last_change: null | { from: number; to: number; reason: string; time?: number; source?: string }
+    source?: string
+    signal_quality?: null | { available: boolean; reason: string; chosen?: number; current?: number; snr_loss_db?: number
+      by_n: Record<string, { cmpm: number; accuracy: number; abstain: number; decision_s: number }>
+      pending: null | { to: number; stable_s: number; dwell_s: number }; locked_targets: number[]; locked_reason: string | null; model_note: string }
+    quality_switches: { from: number; to: number; snr_loss_db: number; injected_uv: number; time: number }[] }
   sim: null | { gaze_key: string | null; gaze_hz: number | null; autopilot: null | { node_id: string; text: string }
     pending_mistake: boolean; mistake_rate: number; noise_multiplier: number; bad_channels: string[]
     disconnected: boolean; drop_probability: number; ssvep_uv: number }

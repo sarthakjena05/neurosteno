@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { command, type EngineConnection, get, post } from '../api'
 import DemoGuide from './DemoGuide'
 import InputsTab from './Inputs'
+import NoiseInjection from './NoiseInjection'
 import Preflight from './Preflight'
 import SignalCheck from './SignalCheck'
 import { flicker } from '../flicker'
 import type { State } from '../types'
 
-const TABS = ['Demo', 'Session', 'Inputs', 'Simulation', 'Signal', 'Calibration', 'Routing', 'Metrics', 'Log'] as const
+const TABS = ['Demo', 'Session', 'Noise', 'Inputs', 'Simulation', 'Signal', 'Calibration', 'Routing', 'Metrics', 'Log'] as const
 type Tab = (typeof TABS)[number]
 
 function Btn({ children, onClick, active, disabled, tone, title }: { children: React.ReactNode; onClick: () => void; active?: boolean; disabled?: boolean; tone?: string; title?: string }) {
@@ -418,6 +419,7 @@ export default function OperatorPanel({ s, link, onOpenCompare }: { s: State; li
           </div>
         )}
         {tab === 'Session' && <SessionTab s={s} />}
+        {tab === 'Noise' && <NoiseInjection s={s} />}
         {tab === 'Inputs' && <InputsTab s={s} />}
         {tab === 'Simulation' && <SimulationTab s={s} />}
         {tab === 'Signal' && <SignalTab s={s} />}
