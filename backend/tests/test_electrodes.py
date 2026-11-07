@@ -104,6 +104,9 @@ def test_engine_alpha_check_flow_and_snapshot():
     assert res["origin"] == "simulated" and res["verdict"] in ("eeg_confirmed", "weak", "not_detected")
     assert not eng.sim.eyes_closed
     assert snapshot(eng)["decoder"]["calibration"]["alpha"]["verdict"] == res["verdict"]
+    # synthetic data must never claim physiological EEG (issue #1, R5)
+    assert res["claim"] == "pipeline_check_only" and "Physiological EEG" not in res["note"]
+    assert "pipeline check" in res["note"].lower()
 
 
 def test_calibration_from_another_origin_never_applies():

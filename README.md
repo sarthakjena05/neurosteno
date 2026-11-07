@@ -211,7 +211,7 @@ currently shows a driver error in Device Manager.
 ## Tests
 
 ```powershell
-cd backend;  .\.venv\Scripts\python -m pytest -q      # 76 tests, ~35 s
+cd backend;  .\.venv\Scripts\python -m pytest -q      # 79 tests, ~50 s
 cd frontend; npm test                                   # 13 tests
 ```
 Covered: catalog quality (≥1,000 unique phrases), reachability of every phrase for 2/3/5 targets ×

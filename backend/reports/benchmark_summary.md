@@ -1,8 +1,8 @@
-# NeuroSteno benchmark (SIMULATED) · 2026-11-07T14:44:52
+# NeuroSteno benchmark (SIMULATED) · 2026-11-07T14:49:38
 
 > SIMULATION ONLY. Decoder outcomes come from the real FBCCA code run on SYNTHETIC EEG; the patient is a perfect-intent simulated agent; profiles are synthetic. These are model estimates for comparing strategies, not empirical or clinical results.
 
-Command: `python scripts/run_benchmark.py --replicates 5 --tasks 14 --idle 180 --test-per-target 40 --test-rest 60` · runtime 22.0 s
+Command: `python scripts/run_benchmark.py --replicates 5 --tasks 14 --idle 180 --test-per-target 40 --test-rest 60 --message-runs 2` · runtime 17.7 s
 
 **Question:** Can context-aware, risk-aware, signal-adaptive navigation increase correctly confirmed medical messages per minute compared with conventional fixed-menu EEG communication?
 
@@ -167,6 +167,23 @@ Primary outcome: **CMPM** = correctly confirmed messages per minute (mean, 95% b
 - D vs A5: ΔCMPM -0.095 [-0.2279, 0.0515], ratio 0.942 [0.6544, 1.2591], better in 40% of 15 paired sessions
 - D+ vs A5: ΔCMPM -0.004 [-0.1443, 0.1247], ratio 1.114 [0.818, 1.4236], better in 60% of 15 paired sessions
 - D vs C: ΔCMPM -0.164 [-0.3283, 0.0063], ratio 0.908 [0.5949, 1.2542], better in 40% of 15 paired sessions
+
+## Demo scenario messages, medium SNR: mean selections / mean completion s (runs per cell)
+
+| Scenario | Message | A2 | A3 | A5 | B2 | B3 | B5 | C | D | D+ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| A | left-leg-reposition | 58.1 / 208.7 | 16.1 / 84.2 | 8.3 / 54.5 | 62.9 / 231.6 | 24.7 / 125.0 | 7.4 / 47.5 | 7.4 / 47.5 | 7.0 / 84.6 | 7.9 / 69.4 |
+| A | suction-now | 39.6 / 143.6 | 10.2 / 55.7 | 4.7 / 32.5 | 24.0 / 86.2 | 16.6 / 85.4 | 4.1 / 30.4 | 4.1 / 30.4 | 3.0 / 38.6 | 3.2 / 29.3 |
+| A | turn-left | 28.6 / 105.4 | 11.0 / 59.1 | 6.6 / 43.5 | 28.7 / 105.5 | 16.2 / 82.7 | 6.6 / 43.5 | 6.6 / 43.5 | 6.0 / 84.6 | 6.7 / 76.8 |
+| A | water-sips | 49.2 / 180.4 | 15.1 / 78.7 | 7.1 / 47.0 | 42.5 / 155.2 | 18.6 / 94.4 | 8.1 / 51.6 | 8.1 / 51.6 | 7.0 / 111.5 | 8.5 / 81.4 |
+| B | left-leg-reposition | 44.1 / 159.0 | 17.4 / 89.7 | 7.6 / 48.6 | 24.5 / 91.5 | 16.9 / 87.3 | 3.8 / 27.6 | 3.8 / 27.6 | 3.0 / 46.5 | 3.5 / 37.5 |
+| B | suction-now | 39.8 / 144.1 | 13.8 / 73.1 | 5.0 / 34.4 | 23.2 / 86.7 | 25.6 / 126.0 | 3.5 / 26.6 | 3.5 / 26.6 | 3.0 / 51.4 | 3.2 / 32.9 |
+| B | turn-left | 34.4 / 127.0 | 13.3 / 70.5 | 6.9 / 45.3 | 13.5 / 53.1 | 12.9 / 65.9 | 2.4 / 19.7 | 2.4 / 19.7 | 2.0 / 29.6 | 2.0 / 19.9 |
+| B | water-sips | 44.3 / 164.0 | 16.4 / 85.6 | 7.9 / 51.9 | 51.9 / 191.5 | 19.8 / 100.0 | 7.4 / 48.0 | 7.4 / 48.0 | 7.2 / 98.1 | 8.3 / 87.9 |
+| C | left-leg-reposition | 58.0 / 208.9 | 15.8 / 82.8 | 6.3 / 42.0 | 46.7 / 171.2 | 20.5 / 104.1 | 7.7 / 49.9 | 7.7 / 49.9 | 7.0 / 85.0 | 8.3 / 77.1 |
+| C | suction-now | 40.2 / 146.1 | 9.5 / 52.2 | 5.0 / 34.4 | 31.2 / 112.9 | 4.6 / 28.4 | 3.9 / 28.4 | 3.9 / 28.4 | 3.0 / 34.0 | 3.2 / 26.8 |
+| C | turn-left | 34.7 / 126.2 | 12.9 / 67.9 | 7.4 / 48.3 | 34.6 / 126.1 | 22.5 / 111.4 | 7.4 / 48.3 | 7.4 / 48.3 | 6.0 / 87.6 | 7.8 / 84.4 |
+| C | water-sips | 55.5 / 209.6 | 14.1 / 75.0 | 7.2 / 47.3 | 62.3 / 228.9 | 13.9 / 74.0 | 7.5 / 48.3 | 7.5 / 48.3 | 7.1 / 104.5 | 8.7 / 84.2 |
 
 ## Limitations
 - Synthetic EEG: SNR levels are simulator settings, not measurements from people; real SSVEP varies with the person, display, electrode contact and fatigue.

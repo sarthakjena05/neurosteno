@@ -133,6 +133,7 @@ class Engine:
         self.outcomes: deque = deque(maxlen=10)
         self.last_adaptation: dict | None = None
         self.tracker = OnlineTracker()
+        self.unconfirmed_send_blocked = 0  # invariant counter: must stay 0
         self.adapt_since_switch = 0
         self.adapt_model: dict | None = None
         self.sent: list[dict] = []
@@ -268,6 +269,7 @@ class Engine:
         t["final_text"] = leaf.phrase
         t["correct"] = None if not t["intended"] else (t["intended"] == leaf.id)
         t["n_end"] = self.cfg.n_choices
+        t["confirmed_at"] = time.time()
         t.pop("started", None)
         self.metrics.append(t)
         self.store.append_metric(t)
@@ -661,7 +663,7 @@ class Engine:
                 self._reject("Patient rejected the prediction")
         elif a.kind == "review":
             if t.key == "yes":
-                self._send()
+                self._send(confirmed_by=a)
             else:
                 self._cancel_review("Patient chose to change the message")
 
@@ -754,10 +756,16 @@ class Engine:
         self._maybe_adapt()
         self._enter(Phase.IDLE)
 
-    def _send(self) -> None:
+    def _send(self, confirmed_by: Attempt | None = None) -> None:
+        """Only an explicit, decoded YES on the final review may send a message."""
+        if confirmed_by is None or confirmed_by.kind != "review":
+            self.unconfirmed_send_blocked += 1
+            self.log("safety", "Blocked an attempt to send a message without explicit final confirmation")
+            return
         leaf = self.pending_leaf
         msg = {
             "text": leaf.phrase, "node_id": leaf.id, "title": leaf.title, "time": time.time(),
+            "confirmed_by": "decoded final YES",
             "profile": self.profile.id, "source": self.source.kind.value if self.source else "none",
             "data_origin": self.source_origin(), "urgent": leaf.urgent,
             "provisional_steps": sum(1 for c in self.nav.crumbs if c.provisional),
@@ -1077,6 +1085,17 @@ class Engine:
                      f"mean {est['mean_decision_s']} s, supported={res['supported']}. {res['caveat']}")
         elif c.kind == "alpha":
             key = "alpha"
+            if res["origin"] != "real":
+                # Synthetic or non-real data cannot show that a brain is being recorded.
+                res["raw_note"] = res["note"]
+                res["claim"] = "pipeline_check_only"
+                res["note"] = {
+                    "eeg_confirmed": f"{res['origin'].capitalize()} alpha response detected: pipeline check only, "
+                                     "not physiological EEG.",
+                }.get(res["verdict"], f"Pipeline check on {res['origin']} data only (verdict {res['verdict']}); "
+                                      "says nothing about a real brain.")
+            else:
+                res["claim"] = "physiological" if res["verdict"] == "eeg_confirmed" else "none"
             self.log("calibration", f"Alpha check ({res['origin']} data): {res['verdict']}. {res['note']}")
         else:
             key = "blink"

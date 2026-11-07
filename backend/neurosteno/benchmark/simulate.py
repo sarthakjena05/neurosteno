@@ -124,6 +124,7 @@ class Metrics:
     back_selections: int = 0
     caregiver_pauses: int = 0
     gated_accepts: int = 0
+    sent_without_final_yes: int = 0     # protocol invariant, must stay 0
     task_times: list = field(default_factory=list)
     urgent_times: list = field(default_factory=list)
     n_switches: list = field(default_factory=list)
@@ -144,6 +145,7 @@ class Metrics:
             "rejected_predictions": self.rejected_predictions, "abstentions": self.abstentions,
             "no_control_abstentions": self.no_control_abstentions, "back_selections": self.back_selections,
             "caregiver_pauses": self.caregiver_pauses, "gated_accepts": self.gated_accepts,
+            "sent_without_final_yes": self.sent_without_final_yes,
             "mean_task_s": round(float(np.mean(self.task_times)), 2) if self.task_times else None,
             "median_task_s": round(float(np.median(self.task_times)), 2) if self.task_times else None,
             "urgent_mean_s": (round(float(np.mean([t for t in self.urgent_times if t is not None])), 2)
@@ -287,7 +289,7 @@ class Session:
             return None
         # final review: always explicit; dynamic decoder retries abstentions, fixed is forced choice
         send = self._confirm(None if target is None else leaf.id == target, None)
-        if send:
+        if send is True:  # the ONLY path to a sent message: a decoded final YES
             self.t += tm.sent_display_s
             nav.home()
             return "SENT:" + leaf.id

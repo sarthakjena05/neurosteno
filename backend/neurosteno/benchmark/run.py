@@ -26,7 +26,8 @@ from ..adaptive import Timing, choose_n, expected_cmpm
 from ..config import BACKEND_DIR, DATA_DIR
 from ..context import ProfileStore, rank, shortcuts
 from ..phrases.catalog import build_catalog
-from ..routing import URGENT_ROUTES, lengths, plan_routing, request_distribution
+from ..routing import SCENARIO_MESSAGES, SCENARIOS as ROUTING_SCENARIOS, URGENT_ROUTES, lengths, plan_routing, \
+    request_distribution
 from .pool import Pool, build_pool
 from .simulate import Condition, Session, SessionSpec, calib_rel, conditions, fixed_window_for
 
@@ -93,6 +94,88 @@ def schedule(scenario: str, n: int) -> list[str]:
     return [scenario] * n
 
 
+def setup_condition(cond: Condition, cal: dict, win: dict, r: dict, tm: Timing):
+    """What a condition knows before the session: routes, expected selections, calibration
+    priors (calibration set only) and the initial n."""
+    rt = r[cond.routing]
+    exp_sel = {n: rt[n]["exp_sel"] for n in (2, 3, 5)}
+    routes = {n: rt[n]["routes"] for n in (2, 3, 5)}
+    if cond.decoder == "fixed":
+        priors = {n: calib_rel(cal[n], "fixed", win[n]) for n in (2, 3, 5)}
+    else:
+        op = "step" if cond.confirm_gate is None else "strict"
+        priors = {n: calib_rel(cal[n], "dynamic", op=op) for n in (2, 3, 5)}
+    confirm = calib_rel(cal[2], "dynamic") if cond.decoder == "dynamic" else priors[2]
+    gates = {n: tuple(cal[n].calib_gate) for n in (2, 3, 5)} if cond.confirm_gate else None
+    if cond.n is None:
+        n0 = choose_n(priors, confirm, exp_sel, tm, [2, 3, 5], step_confirm=cond.step_confirm, gates=gates)["n"]
+    else:
+        n0 = cond.n
+    return n0, exp_sel, routes, priors, confirm, gates
+
+
+MESSAGE_LEVELS = ["low", "medium", "high"]
+
+
+def run_message_cell(args) -> list[dict]:
+    """Single-message sessions for the demo scenario messages (routing.SCENARIO_MESSAGES) under
+    every condition: the same message, profile, signal level and seed for each condition."""
+    rep, sc_id, level, runs, cfg = args
+    profile = next(s["profile"] for s in ROUTING_SCENARIOS if s["id"] == sc_id)
+    pools = get_pools(rep, cfg["test_per_target"], cfg["test_rest"])
+    cat = build_catalog()
+    tm = Timing()
+    cal = pools[level]
+    win = {n: fixed_window_for(cal[n], tm) for n in (2, 3, 5)}
+    windows = {lvl: dict(win) for lvl in pools}
+    r = routing_for(profile)
+    rows = []
+    for mi, (mkey, mid) in enumerate(SCENARIO_MESSAGES.items()):
+        for cond in conditions():
+            n0, exp_sel, routes, priors, confirm, gates = setup_condition(cond, cal, win, r, tm)
+            for k in range(runs):
+                seed = int(np.random.SeedSequence([rep, k, mi, MESSAGE_LEVELS.index(level), ord(sc_id), 99])
+                           .generate_state(1)[0])
+                spec = SessionSpec(profile, [level], [(mid, mid in URGENT_ROUTES)], 0.0, seed, "message")
+                m = Session(cond, cat, pools, routes, exp_sel, tm, spec, n0, windows, priors, confirm, gates).run()
+                rows.append({"condition": cond.key, "scenario": sc_id, "profile": profile, "message": mkey,
+                             "node_id": mid, "snr_level": level, "replicate": rep, "n_start": n0,
+                             "selections": m.accepted_selections, "completion_s": m.task_time_s,
+                             "correct": m.correct_sent, "wrong": m.wrong_sent, "not_completed": m.timeouts,
+                             "rejected": m.rejected_predictions, "abstentions": m.abstentions,
+                             "sent_without_final_yes": m.sent_without_final_yes})
+    return rows
+
+
+def aggregate_messages(rows: list[dict]) -> list[dict]:
+    """Rows in the shape agreed with the frontend (issue #1, B3)."""
+    groups: dict = {}
+    for r in rows:
+        groups.setdefault((r["condition"], r["scenario"], r["profile"], r["message"], r["snr_level"]), []).append(r)
+    out = []
+    for (cond, sc, prof, msg, lvl), rs in sorted(groups.items()):
+        comp = np.array([x["completion_s"] for x in rs])
+        n_starts = [x["n_start"] for x in rs]
+        out.append({
+            "condition": cond, "scenario": sc, "profile": prof, "message": msg, "node_id": rs[0]["node_id"],
+            "snr_level": lvl, "snr_uv": LEVELS[lvl],
+            "n_start": max(set(n_starts), key=n_starts.count),
+            "n_start_counts": {str(n): n_starts.count(n) for n in sorted(set(n_starts))},
+            "runs": len(rs),
+            "mean_selections": round(float(np.mean([x["selections"] for x in rs])), 2),
+            "mean_completion_s": round(float(comp.mean()), 1),
+            "sd_completion_s": round(float(comp.std(ddof=1)), 1) if len(rs) > 1 else None,
+            "correct": sum(x["correct"] for x in rs), "wrong": sum(x["wrong"] for x in rs),
+            "not_completed": sum(x["not_completed"] for x in rs),
+            "mean_rejected": round(float(np.mean([x["rejected"] for x in rs])), 2),
+            "mean_abstentions": round(float(np.mean([x["abstentions"] for x in rs])), 2),
+            "correct_msgs_per_min": round(60 * sum(x["correct"] for x in rs) / comp.sum(), 3) if comp.sum() else 0.0,
+            "final_sent_without_confirm": sum(x["sent_without_final_yes"] for x in rs),
+            "origin": "simulated",
+        })
+    return out
+
+
 def run_cell(args) -> list[dict]:
     """All conditions for one (replicate, profile, mix, scenario) session. Runs in a worker."""
     rep, profile, mix, scenario, cfg = args
@@ -108,23 +191,7 @@ def run_cell(args) -> list[dict]:
     r = routing_for(profile)
     rows = []
     for cond in conditions():
-        rt = r[cond.routing]
-        exp_sel = {n: rt[n]["exp_sel"] for n in (2, 3, 5)}
-        routes = {n: rt[n]["routes"] for n in (2, 3, 5)}
-        priors = confirm = None
-        choice = None
-        if cond.decoder == "fixed":
-            priors = {n: calib_rel(cal[n], "fixed", win[n]) for n in (2, 3, 5)}
-        else:
-            op = "step" if cond.confirm_gate is None else "strict"
-            priors = {n: calib_rel(cal[n], "dynamic", op=op) for n in (2, 3, 5)}
-        confirm = calib_rel(cal[2], "dynamic") if cond.decoder == "dynamic" else priors[2]
-        gates = {n: tuple(cal[n].calib_gate) for n in (2, 3, 5)} if cond.confirm_gate else None
-        if cond.n is None:
-            choice = choose_n(priors, confirm, exp_sel, tm, [2, 3, 5], step_confirm=cond.step_confirm, gates=gates)
-            n0 = choice["n"]
-        else:
-            n0 = cond.n
+        n0, exp_sel, routes, priors, confirm, gates = setup_condition(cond, cal, win, r, tm)
         spec = SessionSpec(profile, sched, tasks, cfg["idle_s"], seed=hash((rep, profile, mix, scenario)) % 2**32,
                            mix=mix)
         spec.seed = int(np.random.SeedSequence([rep, PROFILES.index(profile), MIXES.index(mix),
@@ -228,7 +295,7 @@ def urgent_accessibility(profiles=PROFILES) -> list[dict]:
 
 def run_benchmark(replicates: int = 5, n_tasks: int = 14, idle_s: float = 180.0, test_per_target: int = 40,
                   test_rest: int = 60, workers: int = 4, scenarios=None, out_dir: Path | None = None,
-                  log=print) -> dict:
+                  log=print, message_runs: int = 2) -> dict:
     t0 = time.time()
     cfg = {"n_tasks": n_tasks, "idle_s": idle_s, "test_per_target": test_per_target, "test_rest": test_rest}
     scenarios = list(scenarios or SCENARIOS)
@@ -241,6 +308,11 @@ def run_benchmark(replicates: int = 5, n_tasks: int = 14, idle_s: float = 180.0,
                  for sc in scenarios]
         log(f"Running {len(cells)} sessions x {len(conditions())} conditions ...")
         rows = [row for rs in ex.map(run_cell, cells) for row in rs]
+        mcells = [(rep, s["id"], lvl, message_runs, cfg) for rep in range(replicates) for s in ROUTING_SCENARIOS
+                  for lvl in MESSAGE_LEVELS]
+        log(f"Running per-message experiment: {len(mcells)} cells x {len(SCENARIO_MESSAGES)} messages x "
+            f"{len(conditions())} conditions x {message_runs} runs ...")
+        mrows = [row for rs in ex.map(run_message_cell, mcells) for row in rs]
     summary = summarize(rows)
     result = {
         "schema_version": SCHEMA_VERSION,
@@ -251,7 +323,8 @@ def run_benchmark(replicates: int = 5, n_tasks: int = 14, idle_s: float = 180.0,
         "runtime_s": round(time.time() - t0, 1),
         "command": (f"python scripts/run_benchmark.py --replicates {replicates} --tasks {n_tasks} --idle {idle_s:.0f} "
                     f"--test-per-target {test_per_target} --test-rest {test_rest}"
-                    + (f" --scenarios {','.join(scenarios)}" if scenarios != list(SCENARIOS) else "")),
+                    + (f" --scenarios {','.join(scenarios)}" if scenarios != list(SCENARIOS) else "")
+                    + f" --message-runs {message_runs}"),
         "research_question": ("Can context-aware, risk-aware, signal-adaptive navigation increase correctly confirmed "
                               "medical messages per minute compared with conventional fixed-menu EEG communication?"),
         "disclaimer": ("SIMULATION ONLY. Decoder outcomes come from the real FBCCA code run on SYNTHETIC EEG; the patient "
@@ -275,6 +348,15 @@ def run_benchmark(replicates: int = 5, n_tasks: int = 14, idle_s: float = 180.0,
         },
         "summary": summary,
         "urgent_accessibility": urgent_accessibility(),
+        "per_message": {
+            "description": ("Single-message sessions for the demo scenario messages: same profile, message, signal "
+                            "level and seed for every condition. runs = replicates x message_runs."),
+            "messages": SCENARIO_MESSAGES, "snr_levels_uv": {k: LEVELS[k] for k in MESSAGE_LEVELS},
+            "final_sent_without_confirm_note": ("Simulator protocol counter (a message can only be sent after a "
+                                                "decoded final YES); the live engine enforces and reports the same "
+                                                "invariant in state.safety_invariants."),
+            "rows": aggregate_messages(mrows),
+        },
         "decoder_pools": pool_summaries,
         "sessions": rows,
         "limitations": LIMITATIONS,
@@ -323,6 +405,20 @@ def to_markdown(res: dict) -> str:
         for c in [c for c in s["comparisons"] if c["scenario"] == cell["scenario"] and c["mix"] == cell["mix"]]:
             L.append(f"- {c['condition']} vs {c['baseline']}: ΔCMPM {c['mean_diff_cmpm']:+.3f} {c['diff_ci95']}, "
                      f"ratio {c['mean_ratio']} {c['ratio_ci95']}, better in {c['fraction_better']:.0%} of {c['pairs']} paired sessions")
+        L.append("")
+    pm = [r for r in res.get("per_message", {}).get("rows", []) if r["snr_level"] == "medium"]
+    if pm:
+        conds = [c["key"] for c in res["conditions"]]
+        L.append("## Demo scenario messages, medium SNR: mean selections / mean completion s (runs per cell)")
+        L.append("")
+        L.append("| Scenario | Message | " + " | ".join(conds) + " |")
+        L.append("|---|---|" + "---|" * len(conds))
+        for sc in sorted({r["scenario"] for r in pm}):
+            for msg in sorted({r["message"] for r in pm}):
+                cells = {r["condition"]: r for r in pm if r["scenario"] == sc and r["message"] == msg}
+                L.append(f"| {sc} | {msg} | " + " | ".join(
+                    f"{cells[c]['mean_selections']} / {cells[c]['mean_completion_s']}" if c in cells else "-"
+                    for c in conds) + " |")
         L.append("")
     L.append("## Limitations")
     L += [f"- {x}" for x in res["limitations"]]

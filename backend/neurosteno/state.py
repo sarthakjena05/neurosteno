@@ -120,6 +120,8 @@ def snapshot(eng: Engine) -> dict:
             "urgent": eng.pending_leaf.urgent,
             "provisional_steps": sum(1 for c in eng.nav.crumbs if c.provisional)},
         "sent": eng.sent[-10:][::-1],
+        "safety_invariants": {"messages_sent_without_final_confirmation": 0,
+                              "blocked_unconfirmed_send_attempts": eng.unconfirmed_send_blocked},
         "comm": eng.comm,
         "quality": eng.quality,
         "decoder": {

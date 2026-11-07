@@ -28,13 +28,14 @@ def main() -> None:
     ap.add_argument("--test-rest", type=int, default=60)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--scenarios", default=",".join(SCENARIOS))
+    ap.add_argument("--message-runs", type=int, default=2, help="runs per replicate in the per-message experiment")
     ap.add_argument("--quick", action="store_true", help="1 replicate, small pools, 6 tasks")
     ap.add_argument("--out", default=None, help="output directory (default backend/reports)")
     a = ap.parse_args()
     if a.quick:
         a.replicates, a.tasks, a.idle, a.test_per_target, a.test_rest = 1, 6, 60.0, 15, 20
     run_benchmark(a.replicates, a.tasks, a.idle, a.test_per_target, a.test_rest, a.workers,
-                        a.scenarios.split(","), Path(a.out) if a.out else None)
+                        a.scenarios.split(","), Path(a.out) if a.out else None, message_runs=a.message_runs)
     out = Path(a.out) if a.out else Path(__file__).resolve().parents[1] / "reports"
     print()
     print((out / "benchmark_summary.md").read_text(encoding="utf-8"))

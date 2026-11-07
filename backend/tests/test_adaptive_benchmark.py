@@ -209,3 +209,38 @@ def test_gated_policy_needs_calibration_and_still_confirms_the_message():
     assert m is not None and m["correct"]
     assert eng.sent[-1]["node_id"] == "comfort/position/turn-left"   # sent only after explicit SEND
     assert m.get("gated_accepts", 0) >= 1
+
+
+# ---- contract additions for the frontend (issue #1: R5, B1-B4) ------------------------------
+def test_compare_rows_have_paths_and_time_estimates():
+    from neurosteno.config import DATA_DIR
+    from neurosteno.context import ProfileStore
+    from neurosteno.routing import compare_scenarios
+    rows = compare_scenarios(build_catalog(), ProfileStore(DATA_DIR), ns=(2,))
+    for r in rows:
+        assert len(r["path_static"]) == r["static"] and len(r["path_adaptive"]) == r["adaptive"]
+        assert r["time_source"] == "assumption" and r["profile_source"] == "seed"
+        assert (r["est_time_adaptive_s"] < r["est_time_static_s"]) == (r["adaptive"] < r["static"])
+    b = next(r for r in rows if r["scenario"] == "B" and r["message"] == "turn-left")
+    assert b["path_adaptive"][-1]["kind"] == "shortcut"
+    assert all(p["kind"] != "shortcut" for p in b["path_static"])
+
+
+def test_engine_refuses_to_send_without_final_yes():
+    eng, clock = make_engine()
+    eng.pending_leaf = build_catalog().get("comfort/position/turn-left")
+    eng._send()                                   # no decoded review YES
+    assert eng.sent == [] and eng.unconfirmed_send_blocked == 1
+    from neurosteno.state import snapshot
+    assert snapshot(eng)["safety_invariants"]["blocked_unconfirmed_send_attempts"] == 1
+
+
+def test_per_message_rows_shape():
+    from neurosteno.benchmark.run import aggregate_messages
+    base = {"scenario": "B", "profile": "mobility", "message": "turn-left", "node_id": "x", "snr_level": "medium",
+            "replicate": 0, "n_start": 5, "selections": 3, "completion_s": 30.0, "correct": 1, "wrong": 0,
+            "not_completed": 0, "rejected": 0, "abstentions": 1, "sent_without_final_yes": 0}
+    rows = aggregate_messages([base | {"condition": "D"}, base | {"condition": "D", "completion_s": 60.0}])
+    r = rows[0]
+    assert r["runs"] == 2 and r["correct_msgs_per_min"] == pytest.approx(60 * 2 / 90.0, abs=1e-3)
+    assert r["final_sent_without_confirm"] == 0 and r["snr_uv"] == 1.4 and r["origin"] == "simulated"
