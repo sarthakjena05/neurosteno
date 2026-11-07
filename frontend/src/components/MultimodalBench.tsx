@@ -1,88 +1,133 @@
-import { bestFor, CAPABILITIES, type MMBench, type MMBenchRow, MULTIMODAL_CONTRACT, STRATEGIES } from '../multimodal'
+import { useState } from 'react'
+import {
+  CAPABILITIES, cellFor, type MMBench, type MMCond, MULTIMODAL_CONTRACT, type Stat, STRATEGIES, type Verdict, verdictFor, WITHHELD_IDLE,
+} from '../multimodal'
 
 /**
- * Four strategies x patient capability, from the backend benchmark only (contract v2.0).
- * Small multiples, one per capability profile, so the patient-specific answer is visible:
- * some patients gain from hybrid controls, others should stay EEG-only.
+ * Which method suits which patient: the backend's SIMULATED multimodal benchmark (contract v1.4,
+ * GET /api/benchmark/multimodal). Small multiples, one per motion/capability profile, at a chosen
+ * simulated EEG signal level. The answer per patient comes from the report's CI-based verdicts,
+ * never from the highest point estimate.
  */
 
-function Bar({ label, color, row, max, best }: { label: string; color: string; row?: MMBenchRow; max: number; best: boolean }) {
-  if (!row) {
+const SNRS = ['low', 'medium', 'high'] as const
+const VERDICT_STYLE: Record<Verdict, { cls: string; mark: string }> = {
+  better: { cls: 'text-green-300', mark: '▲' },
+  worse: { cls: 'text-red-300', mark: '▼' },
+  'no significant difference': { cls: 'text-muted', mark: '=' },
+}
+const f2 = (v: number | undefined) => (v == null ? '-' : v.toFixed(2))
+const ci = (s?: Stat) => (s?.ci95 ? ` [${f2(s.ci95[0])}, ${f2(s.ci95[1])}]` : '')
+
+function Bar({ role, color, c, max }: { role: string; color: string; c?: MMCond; max: number }) {
+  if (!c) {
     return (
       <div className="flex flex-col gap-0.5 text-xs" data-testid="mm-bar" data-measured="false">
-        <span className="flex justify-between"><span>{label}</span><span className="rounded border border-line px-1 text-[10px] text-muted">NOT MEASURED</span></span>
+        <span className="flex justify-between"><span>{role}</span><span className="rounded border border-line px-1 text-[10px] text-muted">NOT MEASURED</span></span>
         <div className="h-3 rounded bg-panel2" />
       </div>
     )
   }
   const w = (v: number) => `${Math.max(1, Math.min(100, (v / max) * 100))}%`
+  const m = c.cmpm
   return (
-    <div className="flex flex-col gap-0.5 text-xs" data-testid="mm-bar" data-measured="true"
-      title={`${label}: ${row.correct_msgs_per_min} correct msgs/min${row.ci95 ? ` (95% CI ${row.ci95[0]}–${row.ci95[1]})` : ''}, ${row.runs} runs`}>
-      <span className="flex justify-between gap-2">
-        <span className={best ? 'font-black' : ''}>{label}{best ? ' · best for this patient' : ''}</span>
-        <span className="tabular-nums font-semibold">{row.correct_msgs_per_min}</span>
-      </span>
+    <div className="flex flex-col gap-0.5 text-xs" data-testid="mm-bar" data-measured="true" title={`${c.label}: ${f2(m.mean)} correct msgs/min${ci(m)}`}>
+      <span className="flex justify-between gap-2"><span>{role}</span><span className="tabular-nums font-semibold">{f2(m.mean)}</span></span>
       <div className="relative h-3 rounded bg-panel2">
-        <div className={`h-3 rounded-r ${color}`} style={{ width: w(row.correct_msgs_per_min) }} />
-        {row.ci95 && <div aria-hidden className="absolute top-1/2 h-0.5 -translate-y-1/2 bg-text/70" style={{ left: w(row.ci95[0]), width: `calc(${w(row.ci95[1])} - ${w(row.ci95[0])})` }} />}
+        <div className={`h-3 rounded-r ${color}`} style={{ width: w(m.mean) }} />
+        {m.ci95 && <div aria-hidden className="absolute top-1/2 h-0.5 -translate-y-1/2 bg-text/70" style={{ left: w(m.ci95[0]), width: `calc(${w(m.ci95[1])} - ${w(m.ci95[0])})` }} />}
       </div>
     </div>
   )
 }
 
+function VerdictLine({ label, v, ratio }: { label: string; v: Verdict; ratio: number }) {
+  const st = VERDICT_STYLE[v]
+  return (
+    <p className={`text-xs ${st.cls}`} data-testid="mm-verdict">
+      <span aria-hidden>{st.mark} </span>{label}: <b>{v}</b> (×{f2(ratio)})
+    </p>
+  )
+}
+
 export default function MultimodalBench({ mm }: { mm: MMBench | null }) {
-  const rows = mm?.rows ?? []
-  const max = Math.max(0.0001, ...rows.map((r) => r.ci95?.[1] ?? r.correct_msgs_per_min))
+  const [snr, setSnr] = useState<string>('medium')
+  const cells = mm ? CAPABILITIES.map((p) => cellFor(mm, p.key, snr)) : []
+  const max = Math.max(0.0001, ...cells.flatMap((c) => STRATEGIES.map((s) => c?.conditions[s.key]?.cmpm.ci95?.[1] ?? c?.conditions[s.key]?.cmpm.mean ?? 0)))
+  const label = (k: string) => mm?.conditions.find((c) => c.key === k)?.label ?? k
   return (
     <section className="flex flex-col gap-3 rounded-2xl border border-line bg-panel p-4" aria-labelledby="mm-bench" data-testid="mm-bench">
       <div className="flex flex-wrap items-center gap-2">
         <h3 id="mm-bench" className="text-lg font-black">Which method suits which patient?</h3>
-        <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${mm ? (mm.real_eeg ? 'bg-green-300 text-black' : 'bg-violet-200 text-black') : 'border border-line text-muted'}`}>
-          {mm ? (mm.real_eeg ? 'BENCHMARK · REAL' : `BENCHMARK · ${mm.origin.toUpperCase()}`) : 'NOT MEASURED'}
+        <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${mm ? 'bg-violet-200 text-black' : 'border border-line text-muted'}`}>
+          {mm ? `BENCHMARK · ${mm.real_eeg || mm.real_imu ? 'INCLUDES REAL DATA' : 'SIMULATED EEG + SIMULATED HEAD MOTION'}` : 'NOT MEASURED'}
         </span>
       </div>
       <p className="text-sm text-muted">
-        NeuroSteno doesn’t assume every patient has the same abilities. It calibrates the brain and movement signals that are available,
-        then selects the fastest <b>reliable</b> method. Bars: correctly confirmed messages per minute (line = 95% CI).
+        NeuroSteno doesn’t assume every patient has the same abilities. Bars: correctly confirmed messages per minute (line = 95% CI).
+        The verdicts under each panel come from the report’s paired 95% confidence intervals.
       </p>
       {!mm && (
         <p className="rounded-lg bg-panel2 p-2 text-xs" data-testid="mm-pending">
-          The multimodal benchmark is not published yet ({MULTIMODAL_CONTRACT === 'confirmed' ? 'no rows in the report' : 'contract v2.0 proposed to the backend, not confirmed'}). No numbers are shown until it exists.
-          Hybrid is expected to help only patients whose movement check passes; that is a hypothesis until measured.
+          The multimodal benchmark is not available ({MULTIMODAL_CONTRACT === 'confirmed' ? 'not published by the backend' : 'contract not confirmed'}). No numbers are shown until it exists.
         </p>
       )}
-      <div className="grid gap-3 md:grid-cols-3">
-        {CAPABILITIES.map((c) => {
-          const best = bestFor(rows, c.key)
+      {mm && (
+        <>
+          <p className="rounded-lg bg-amber-950 p-2 text-xs text-amber-100" data-testid="mm-disclaimer">{mm.disclaimer ?? 'SIMULATED.'} {!mm.real_imu && <b>No real-patient head-motion data.</b>}</p>
+          <div role="radiogroup" aria-label="Simulated EEG signal level" className="flex flex-wrap items-center gap-1">
+            <span className="mr-1 text-xs font-bold uppercase tracking-wider text-muted">Simulated EEG signal</span>
+            {SNRS.map((k) => {
+              const uv = mm.cells.find((c) => c.snr_level === k)?.snr_uv
+              return <button key={k} type="button" role="radio" aria-checked={snr === k} onClick={() => setSnr(k)}
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${snr === k ? 'bg-sky-600' : 'bg-panel2 hover:bg-line'}`}>{k}{uv != null ? ` (${uv} µV)` : ''}</button>
+            })}
+          </div>
+        </>
+      )}
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {CAPABILITIES.map((p, i) => {
+          const c = cells[i]
+          const v = mm ? verdictFor(mm, p.key, snr) : undefined
           return (
-            <div key={c.key} className="flex flex-col gap-1.5 rounded-xl bg-ink p-3" data-testid={`mm-${c.key}`}>
-              <h4 className="text-sm font-black">{c.label}</h4>
-              {STRATEGIES.map((st) => {
-                const r = rows.find((x) => x.capability_profile === c.key && x.condition === st.key)
-                return <Bar key={st.key} label={st.label} color={st.color} row={r} max={max} best={!!best && best === r} />
-              })}
+            <div key={p.key} className="flex flex-col gap-1.5 rounded-xl bg-ink p-3" data-testid={`mm-${p.key}`}>
+              <h4 className="text-sm font-black">{p.label}</h4>
+              {STRATEGIES.map((st) => <Bar key={st.key} role={st.role} color={st.color} c={c?.conditions[st.key]} max={max} />)}
+              {v && (
+                <div className="mt-1 border-t border-line pt-1">
+                  <VerdictLine label="Always-on hybrid vs adaptive EEG-only" v={v.always_on_hybrid_vs_adaptive_eeg} ratio={v.always_on_hybrid_ratio} />
+                  <VerdictLine label="Optimised vs adaptive EEG-only" v={v.optimised_vs_adaptive_eeg} ratio={v.optimised_ratio} />
+                </div>
+              )}
             </div>
           )
         })}
       </div>
-      {rows.length > 0 && (
+      {mm && (
         <div className="overflow-x-auto">
           <table className="w-full text-xs tabular-nums" data-testid="mm-table">
-            <caption className="text-left text-muted">Speed and safety together. {mm?.note ?? ''} {mm?.generated_at ? `Generated ${mm.generated_at}.` : ''}</caption>
-            <thead><tr className="text-left"><th>patient</th><th>strategy</th><th>runs</th><th>correct msgs/min</th><th>selection time</th><th>corrections</th><th>false activations / h</th><th>sent while idle / h</th><th>wrong-message rate</th><th>sent w/o final YES</th></tr></thead>
-            <tbody>{rows.map((r, i) => (
-              <tr key={i} className="border-t border-line">
-                <td>{CAPABILITIES.find((c) => c.key === r.capability_profile)?.label ?? r.capability_profile}</td>
-                <td>{STRATEGIES.find((s) => s.key === r.condition)?.label ?? r.condition}</td>
-                <td>{r.runs}</td><td>{r.correct_msgs_per_min}{r.ci95 ? ` [${r.ci95[0]}, ${r.ci95[1]}]` : ''}</td>
-                <td>{r.mean_selection_s != null ? `${r.mean_selection_s} s` : '-'}</td><td>{r.corrections ?? '-'}</td>
-                <td>{r.false_activations_per_hour ?? '-'}</td><td>{r.idle_false_sent_per_hour ?? '-'}</td>
-                <td>{r.error_rate != null ? `${(r.error_rate * 100).toFixed(1)}%` : '-'}</td><td>{r.final_sent_without_confirm ?? '-'}</td>
+            <caption className="text-left text-muted">Speed and safety together, {snr} simulated signal. “Sent while idle” for M1/M2 is withheld: the backend team is investigating those numbers.</caption>
+            <thead><tr className="text-left"><th>patient</th><th>condition</th><th>correct msgs/min [95% CI]</th><th>time / message</th><th>corrections / message</th><th>false activations / h</th><th>sent while idle / h</th><th>wrong-message rate</th></tr></thead>
+            <tbody>{CAPABILITIES.flatMap((p, i) => Object.entries(cells[i]?.conditions ?? {}).map(([k, c]) => (
+              <tr key={`${p.key}-${k}`} className="border-t border-line">
+                <td>{p.label}</td><td>{label(k)}</td>
+                <td>{f2(c.cmpm.mean)}{ci(c.cmpm)}</td>
+                <td>{c.mean_task_s ? `${Math.round(c.mean_task_s.mean)} s` : '-'}</td>
+                <td>{f2(c.corrections_per_message?.mean)}</td>
+                <td>{f2(c.accidental_activations_per_hour?.mean)}</td>
+                <td data-testid={WITHHELD_IDLE.has(k) ? 'idle-withheld' : undefined}>{WITHHELD_IDLE.has(k) ? 'under investigation' : f2(c.idle_false_sent_per_hour?.mean)}</td>
+                <td>{c.error_rate ? `${(c.error_rate.mean * 100).toFixed(1)}%` : '-'}</td>
               </tr>
-            ))}</tbody>
+            )))}</tbody>
           </table>
         </div>
+      )}
+      {mm && mm.limitations.length > 0 && (
+        <details className="text-xs">
+          <summary className="cursor-pointer font-bold">Limitations ({mm.limitations.length})</summary>
+          <ul className="mt-1 list-disc pl-4">{mm.limitations.map((l) => <li key={l}>{l}</li>)}</ul>
+          {mm.generated_at && <p className="mt-1 text-muted">Generated {mm.generated_at}</p>}
+        </details>
       )}
     </section>
   )

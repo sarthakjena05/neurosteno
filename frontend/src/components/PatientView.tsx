@@ -281,6 +281,9 @@ function CalibrationOverlay({ s }: { s: State }) {
     )
   }
   if (c.kind === 'alpha') return <AlphaCheckOverlay s={s} />
+  // v1.4 head-movement calibration: rendered by the gesture overlay; never show SSVEP targets / flicker for it.
+  if (c.kind === 'gesture') return null
+  if (c.kind !== 'ssvep' && c.kind !== 'blink') return null
   return <CalibrationTargets s={s} />
 }
 
@@ -479,9 +482,16 @@ export default function PatientView({ s, link }: { s: State; link?: { connected:
         </Overlay>
       )}
       {s.calibration && <CalibrationOverlay s={s} />}
-      {inputs.gestureCal && (
+      {inputs.gestureCal ? (
         <Overlay tone="bg-ink/95" label="Head movement check" testId="gesture-cal-overlay">
           <GestureCalibrationView cal={inputs.gestureCal} />
+        </Overlay>
+      ) : s.calibration?.kind === 'gesture' && (
+        // fallback when only calibration.gesture is published
+        <Overlay tone="bg-ink/95" label="Head movement check" testId="gesture-cal-overlay">
+          <p className="text-lg text-muted">Movement check</p>
+          <p className="text-5xl font-black">{String((s.calibration as { gesture?: { instruction?: string } }).gesture?.instruction ?? 'Follow the instructions')}</p>
+          <p className="max-w-xl text-sm text-muted">Only move if it is comfortable. NeuroSteno works with brain signals alone.</p>
         </Overlay>
       )}
       {s.emergency && (

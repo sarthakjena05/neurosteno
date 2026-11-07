@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { command } from '../api'
 import { MOCK_LABEL, MOCKS, type MockKey } from '../mockMultimodal'
 import {
-  answerMethods, GESTURE_FINAL_CONFIRM_ENABLED, type GestureCalibSession, type InputMode, type InputsVM, METHOD_INFO, type MethodKey, MODE_INFO, MULTIMODAL_CONTRACT,
+  answerMethods, calibPhaseSeconds, GESTURE_CONTROLS_HOLD, GESTURE_FINAL_CONFIRM_ENABLED, type GestureCalibSession, type InputMode, type InputsVM, METHOD_INFO, type MethodKey, MODE_INFO, MULTIMODAL_CONTRACT,
   readInputs, STATUS_INFO,
 } from '../multimodal'
 import { speakCue } from '../speech'
@@ -54,21 +54,28 @@ export function MethodTable({ vm }: { vm: InputsVM }) {
 }
 
 export function ModeCards({ vm, onSet }: { vm: InputsVM; onSet?: (m: InputMode) => void }) {
+  const modes: InputMode[] = ['eeg_only', 'hybrid', 'motion_assisted', 'auto']
   return (
-    <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Input mode" data-testid="mode-cards">
-      {(['eeg_only', 'hybrid', 'motion_assisted'] as InputMode[]).map((m) => {
-        const on = vm.mode === m
-        const avail = vm.modesAvailable.includes(m)
-        return (
-          <button key={m} type="button" role="radio" aria-checked={on} disabled={!avail || !onSet || on} onClick={() => onSet?.(m)}
-            data-testid={`mode-${m}`}
-            className={`flex flex-col gap-1 rounded-xl border-2 p-2 text-left text-xs disabled:cursor-default ${on ? 'border-sky-400 bg-sky-950' : avail ? 'border-line bg-panel2 hover:border-sky-600' : 'border-line bg-panel opacity-60'}`}>
-            <span className="text-sm font-black">{on ? '● ' : ''}{MODE_INFO[m].label}</span>
-            <span className="text-muted">{MODE_INFO[m].text}</span>
-            {!avail && <span className="font-semibold text-amber-300">Not available{m === 'eeg_only' ? '' : ': needs a passing movement calibration'}</span>}
-          </button>
-        )
-      })}
+    <div className="flex flex-col gap-1">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" role="radiogroup" aria-label="Input mode" data-testid="mode-cards">
+        {modes.map((m) => {
+          const on = vm.requested === m || (vm.requested !== 'auto' && vm.mode === m)
+          const avail = m === 'eeg_only' || m === 'auto' || vm.modesAvailable.includes(m)
+          // Under the hold only the safe fallback (EEG-only) can be selected from the UI.
+          const blockedByHold = GESTURE_CONTROLS_HOLD.held && m !== 'eeg_only'
+          return (
+            <button key={m} type="button" role="radio" aria-checked={on} disabled={!avail || !onSet || on || blockedByHold} onClick={() => onSet?.(m)}
+              data-testid={`mode-${m}`}
+              className={`flex flex-col gap-1 rounded-xl border-2 p-2 text-left text-xs disabled:cursor-default ${on ? 'border-sky-400 bg-sky-950' : avail ? 'border-line bg-panel2 hover:border-sky-600' : 'border-line bg-panel opacity-60'}`}>
+              <span className="text-sm font-black">{on ? '● ' : ''}{MODE_INFO[m].label}</span>
+              <span className="text-muted">{MODE_INFO[m].text}</span>
+              {!avail && <span className="font-semibold text-amber-300">Not available: needs a passing movement calibration</span>}
+              {avail && blockedByHold && !on && <span className="font-semibold text-amber-300">Held (see below)</span>}
+            </button>
+          )
+        })}
+      </div>
+      {vm.requested !== vm.mode && <p className="text-xs" data-testid="mode-effective">Requested <b>{MODE_INFO[vm.requested].label}</b> → using <b>{MODE_INFO[vm.mode].label}</b></p>}
     </div>
   )
 }
@@ -86,10 +93,12 @@ export function ImuStatus({ vm }: { vm: InputsVM }) {
   }
   return (
     <p className="flex flex-wrap items-center gap-2 text-xs" data-testid="imu-status">
-      <span className={`rounded px-1.5 py-0.5 font-bold ${i.streaming ? 'bg-green-900' : 'bg-zinc-700'}`}>IMU {i.streaming ? 'streaming' : 'not streaming'} · {i.origin}</span>
-      <span>motion {Math.round(i.motion_level * 100)}%</span>
+      <span className={`rounded px-1.5 py-0.5 font-bold ${i.streaming ? 'bg-green-900' : 'bg-zinc-700'}`}>Motion sensor {i.streaming ? 'streaming' : 'not streaming'} · {i.origin}{i.claim && i.claim !== i.origin ? ` · ${i.claim}` : ''}</span>
+      <span>motion {i.motion_level == null ? '–' : `${Math.round(i.motion_level * 100)}%`}</span>
       {i.moving && <span className="rounded bg-amber-900 px-1.5">head moving</span>}
-      {i.eeg_contaminated && <span className="rounded bg-red-900 px-1.5 font-bold">EEG contaminated by movement: decisions abstain</span>}
+      {i.eeg_contaminated && <span className="rounded bg-red-900 px-1.5 font-bold">EEG disturbed by movement: listening restarts</span>}
+      {i.reason && <span className="text-muted">{i.reason}</span>}
+      <span className="w-full text-muted">Presence of a sensor says nothing about whether the patient can move; only a passing movement check does.</span>
     </p>
   )
 }
@@ -129,8 +138,11 @@ export function PolicyCard({ vm }: { vm: InputsVM }) {
 export function InputStrip({ vm, action }: { vm: InputsVM; action: 'choose' | 'confirm' | 'review' | null }) {
   const methods = answerMethods(vm, action)
   const gestures = methods.filter((m) => m !== 'eeg_ssvep')
+  const anyGestureActive = (['nod_yes', 'shake_no', 'tilt_nav'] as MethodKey[]).some((k) => vm.methods[k].active)
   const g = vm.lastGesture
-  if (vm.provenance === 'eeg_only_default' && !vm.abstain) return null
+  const showAnswer = (action === 'confirm' && gestures.length > 0) || (action === 'review' && anyGestureActive)
+  // Nothing gesture-related on the patient screen unless the backend says gestures are in use.
+  if (!vm.abstain && !vm.motionRestart && !showAnswer && !(g && anyGestureActive)) return null
   return (
     <div className="flex flex-col gap-2" data-testid="input-strip">
       {vm.abstain && (
@@ -139,21 +151,19 @@ export function InputStrip({ vm, action }: { vm: InputsVM; action: 'choose' | 'c
           <span className="block text-base font-normal">{vm.abstain.text} Please try again.</span>
         </div>
       )}
-      {vm.imu?.eeg_contaminated && !vm.abstain && (
-        <p role="status" className="rounded-xl bg-amber-950 px-3 py-1 text-lg">Head is moving: brain-signal decisions are on hold until it is still.</p>
+      {vm.motionRestart && !vm.abstain && (
+        <p role="status" data-testid="motion-restart" className="rounded-xl bg-amber-950 px-3 py-1 text-lg">Head movement disturbed the brain signal: listening again. Nothing was selected.</p>
       )}
-      {(action === 'confirm' || action === 'review') && (
+      {showAnswer && (
         <p className="flex flex-wrap items-center gap-2 text-lg" data-testid="answer-with">
           <span className="text-muted">Answer with:</span>
           <span className="rounded-lg bg-panel2 px-2 py-0.5 font-bold">👁 look at YES / NO</span>
           {gestures.includes('nod_yes') && <span className="rounded-lg bg-green-900 px-2 py-0.5 font-bold">↕ nod = YES</span>}
           {gestures.includes('shake_no') && <span className="rounded-lg bg-red-900 px-2 py-0.5 font-bold">↔ shake = NO</span>}
-          {action === 'review'
-            ? <span className="text-sm text-muted" data-testid="final-eeg-only">Final message: look at SEND. Head gestures are not used to send.</span>
-            : gestures.length === 0 && vm.provenance !== 'eeg_only_default' && <span className="text-sm text-muted">(head gestures not active)</span>}
+          {action === 'review' && <span className="text-sm text-muted" data-testid="final-eeg-only">Final message: look at SEND. Head gestures are not used to send.</span>}
         </p>
       )}
-      {g && (
+      {g && anyGestureActive && (
         <p className="text-base" data-testid="last-gesture">
           {g.accepted
             ? <>✓ {g.gesture} detected → <b>{g.used_for?.toUpperCase() ?? 'noted'}</b> ({Math.round(g.confidence * 100)}%)</>
@@ -165,34 +175,36 @@ export function InputStrip({ vm, action }: { vm: InputsVM; action: 'choose' | 'c
 }
 
 const CAL_TEXT: Record<string, { cue: string; speech: string }> = {
+  neutral: { cue: 'Keep your head still', speech: 'Keep your head still and relax.' },
+  natural: { cue: 'Move naturally (no gestures)', speech: 'Move naturally. No gestures.' },
   nod: { cue: 'Nod your head YES, gently', speech: 'Gently nod your head, yes.' },
   shake: { cue: 'Shake your head NO, gently', speech: 'Gently shake your head, no.' },
-  tilt_left: { cue: 'Tilt your head LEFT', speech: 'Tilt your head to the left.' },
-  tilt_right: { cue: 'Tilt your head RIGHT', speech: 'Tilt your head to the right.' },
+  tilt: { cue: 'Tilt your head to the side and hold', speech: 'Tilt your head to the side and hold.' },
 }
 
 /** Guided gesture calibration (patient-facing). Spoken cues only for live backend sessions. */
 export function GestureCalibrationView({ cal, speak = true }: { cal: GestureCalibSession; speak?: boolean }) {
-  const t = CAL_TEXT[cal.gesture] ?? { cue: `Make the "${cal.gesture}" movement`, speech: `Make the ${cal.gesture} movement.` }
+  const key = cal.sub === 'cue' ? (cal.gesture ?? cal.step_label ?? '') : (cal.step_label ?? (cal.sub === 'rest' ? 'neutral' : ''))
+  const t = CAL_TEXT[key] ?? { cue: `Make the "${key}" movement`, speech: `Make the ${key} movement.` }
   useEffect(() => {
-    if (!speak) return
-    if (cal.sub === 'cue') speakCue(t.speech)
-    if (cal.sub === 'rest') speakCue('Stay still and relax.')
-  }, [cal.sub, cal.trial, cal.gesture, speak, t.speech])
-  const left = Math.max(0, Math.ceil((cal.durations[cal.sub] ?? 0) - cal.elapsed))
+    if (!speak || cal.sub === 'computing') return
+    speakCue(t.speech)
+  }, [cal.step, cal.sub, speak, t.speech])
+  const total = calibPhaseSeconds(cal)
+  const left = total == null ? null : Math.max(0, Math.ceil(total - cal.elapsed))
   const lt = cal.last_trial
   return (
     <div data-testid="gesture-cal" data-sub={cal.sub} className="flex flex-col items-center gap-4 text-center">
-      <p className="text-lg text-muted">Movement check · step {cal.step} of {cal.steps} · {cal.gesture} {cal.trial}/{cal.trials}</p>
-      {cal.sub === 'rest' && <p className="text-5xl font-black">Stay still and relax</p>}
-      {cal.sub === 'cue' && <p className="text-5xl font-black text-sky-200">{t.cue}</p>}
+      <p className="text-lg text-muted">Movement check · step {cal.step} of {cal.steps}{cal.trials ? ` · cue ${Math.min(cal.trial + (cal.sub === 'cue' ? 1 : 0), cal.trials)}/${cal.trials}` : ''}</p>
+      {cal.sub === 'computing'
+        ? <p className="text-4xl font-black">Checking…</p>
+        : <p className={`text-5xl font-black ${cal.sub === 'cue' ? 'text-sky-200' : ''}`}>{t.cue}</p>}
       {cal.sub === 'feedback' && lt && (
         <p className={`text-4xl font-black ${lt.detected ? 'text-green-300' : 'text-zinc-300'}`}>
           {lt.detected ? `✓ ${lt.seen ?? cal.gesture} detected` : 'Not detected. That’s OK.'}
         </p>
       )}
-      {cal.sub === 'computing' && <p className="text-4xl font-black">Checking…</p>}
-      {cal.sub !== 'computing' && <p className="text-xl text-muted">{left} s</p>}
+      {left != null && cal.sub !== 'computing' && <p className="text-xl text-muted">{left} s</p>}
       <p className="max-w-xl text-sm text-muted">Only move if it is comfortable. If moving is hard, that is fine: NeuroSteno works with brain signals alone. A caregiver can stop this check or turn gestures off at any time.</p>
     </div>
   )
@@ -200,43 +212,42 @@ export function GestureCalibrationView({ cal, speak = true }: { cal: GestureCali
 
 function GestureControls({ s, vm }: { s: State; vm: InputsVM }) {
   const [err, setErr] = useState<string | null>(null)
+  const live = vm.provenance === 'backend'
+  const held = GESTURE_CONTROLS_HOLD.held
   // Commands are only ever sent for confirmed backend state (guard in the handler, not just disabled styling).
   const send = (fn: () => Promise<unknown>) => { if (!live) return; setErr(null); fn().catch((e: Error) => setErr(e.message)) }
-  const live = vm.provenance === 'backend'
-  const [pick, setPick] = useState<Record<string, boolean>>({ nod: true, shake: true, tilt: false })
+  const anyEnabled = (['nod_yes', 'shake_no', 'tilt_nav'] as MethodKey[]).some((k) => vm.methods[k].enabled)
+  const anyCalibrated = (['nod_yes', 'shake_no', 'tilt_nav'] as MethodKey[]).some((k) => vm.methods[k].status === 'calibrated')
+  const busy = !!s.calibration || !!vm.gestureCal
   return (
     <div className="flex flex-col gap-2" data-testid="gesture-controls">
       {err && <p role="alert" className="rounded bg-red-900 p-2 text-sm">{err}</p>}
-      {!live && <p className="text-xs text-amber-300">Controls activate when the backend publishes contract v2.0 (proposed on issue #1). Nothing is sent until then.</p>}
-      <fieldset className="flex flex-wrap items-center gap-3 text-sm" disabled={!live || !!s.calibration || !!vm.gestureCal}>
-        <legend className="mb-1 text-xs font-bold uppercase tracking-wider text-muted">Guided movement check (rest → cue → feedback)</legend>
-        {(['nod', 'shake', 'tilt'] as const).map((g) => (
-          <label key={g} className="flex items-center gap-1">
-            <input type="checkbox" checked={pick[g]} onChange={(e) => setPick({ ...pick, [g]: e.target.checked })} />{g}{g === 'tilt' ? ' (optional)' : ''}
-          </label>
-        ))}
-        <button type="button" disabled={!live || !!s.calibration || !!vm.gestureCal} onClick={() => send(() => command('start_gesture_calibration', { gestures: Object.keys(pick).filter((k) => pick[k]), reps: 5 }))}
+      {!live && <p className="text-xs text-amber-300">The backend does not publish gesture input; nothing is sent.</p>}
+      {held && (
+        <div role="note" data-testid="gesture-hold" className="rounded-lg border-2 border-amber-500 bg-amber-950 p-2 text-xs">
+          <b>Gesture controls are held for the demo.</b> Status above is live; starting gesture activity is disabled:
+          <ul className="list-disc pl-4">{GESTURE_CONTROLS_HOLD.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-xs text-muted">Guided movement check: neutral 20 s → shuffled nod / shake / tilt cues → natural movement 30 s</span>
+        <button type="button" disabled={!live || held || busy} onClick={() => { if (!held) send(() => command('start_gesture_calibration', { cues_per_gesture: 6 })) }}
           className="rounded-lg bg-sky-700 px-3 py-1 font-semibold disabled:opacity-40">Start movement check</button>
-      </fieldset>
-      {vm.gestureCal && live && <button type="button" onClick={() => send(() => command('cancel_calibration'))} className="self-start rounded-lg bg-red-700 px-3 py-1 text-sm font-semibold">Stop check</button>}
-      <div className="flex flex-wrap gap-2 text-sm">
-        {GESTURE_KEYS.map((k) => {
-          const m = vm.methods[k]
-          return (
-            <button key={k} type="button" disabled={!live || (!m.enabled && m.status !== 'calibrated')}
-              title={m.status !== 'calibrated' && !m.enabled ? 'Only a calibrated gesture can be turned on' : ''}
-              onClick={() => send(() => command('set_gesture_enabled', { gesture: k, on: !m.enabled }))}
-              className={`rounded-lg px-3 py-1 disabled:opacity-40 ${m.enabled ? 'bg-amber-700' : 'bg-panel2'}`}>
-              {METHOD_INFO[k].label}: {m.enabled ? 'turn OFF' : 'turn on'}
-            </button>
-          )
-        })}
+        {vm.gestureCal && live && <button type="button" onClick={() => send(() => command('cancel_calibration'))} className="rounded-lg bg-red-700 px-3 py-1 font-semibold">Stop check</button>}
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-xs text-muted">One switch for all usable gestures (backend v1.4):</span>
+        {anyEnabled
+          // switching OFF is always allowed
+          ? <button type="button" disabled={!live} onClick={() => send(() => command('set_gesture_enabled', { on: false }))} className="rounded-lg bg-amber-700 px-3 py-1 font-semibold">Gestures ON: turn OFF</button>
+          : <button type="button" disabled={!live || held || !anyCalibrated} title={!anyCalibrated ? 'Needs a passing movement check on this data origin' : ''}
+              onClick={() => { if (!held) send(() => command('set_gesture_enabled', { on: true })) }} className="rounded-lg bg-panel2 px-3 py-1 disabled:opacity-40">Gestures OFF: turn on</button>}
       </div>
       {live && s.sim && (
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className="text-muted">Simulated patient:</span>
-          {(['no_movement', 'reliable_movement', 'unreliable_movement'] as const).map((p) => (
-            <button key={p} type="button" onClick={() => send(() => command('sim_capability', { profile: p }))} className="rounded bg-panel2 px-2 py-0.5">{p.replace('_', ' ')}</button>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-muted">Simulated patient movement:</span>
+          {(['no_movement', 'reliable_movement', 'unreliable_movement', 'high_motion'] as const).map((p) => (
+            <button key={p} type="button" disabled={held} onClick={() => { if (!held) send(() => command('sim_capability', { profile: p })) }} className="rounded bg-panel2 px-2 py-0.5 disabled:opacity-40">{p.replace('_', ' ')}</button>
           ))}
         </div>
       )}
@@ -259,13 +270,14 @@ export default function InputsTab({ s, contract = MULTIMODAL_CONTRACT }: { s: St
   const [err, setErr] = useState<string | null>(null)
   const [mock, setMock] = useState<MockKey | null>(null)
   const mvm = mock ? MOCKS[mock] : null
-  const onSet = vm.provenance === 'backend' ? (m: InputMode) => { setErr(null); command('set_input_mode', { mode: m }).catch((e: Error) => setErr(e.message)) } : undefined
+  // Under the hold only EEG-only (the safe fallback) can be selected; ModeCards disables the rest.
+  const onSet = vm.provenance === 'backend' ? (m: InputMode) => { if (GESTURE_CONTROLS_HOLD.held && m !== 'eeg_only') return; setErr(null); command('set_input_mode', { mode: m }).catch((e: Error) => setErr(e.message)) } : undefined
   return (
     <div className="flex flex-col gap-3" data-testid="inputs-tab">
       <p className="rounded-lg bg-panel2 p-2 text-xs">
         <b>Movement is never assumed.</b> NeuroSteno starts EEG-only for every patient. Head gestures can only be used after a passing
         movement check on this data origin <b>and</b> a caregiver turning them on. Conflicting or movement-disturbed signals abstain.
-        <span className="block text-muted">Input contract: {contract === 'confirmed' ? 'v2.0 confirmed' : 'v2.0 proposed (not yet published by the backend)'}.</span>
+        <span className="block text-muted">Input contract: {contract === 'confirmed' ? 'v1.4 confirmed by the backend (input/policy shapes)' : 'proposed (not used)'}. No real-patient motion data has been validated yet.</span>
       </p>
       {err && <p role="alert" className="rounded bg-red-900 p-2 text-sm">{err}</p>}
       <Box title="Input mode (server state)">

@@ -22,7 +22,7 @@ const cal = (detected: number, falses: number, verdict: 'pass' | 'unreliable' | 
   ({ origin: 'simulated', attempts: 5, detected, rest_s: 30, rest_false_triggers: falses, median_latency_s: lat, confidence: verdict === 'pass' ? 0.95 : 0.6, verdict })
 
 const base: Omit<InputsVM, 'methods' | 'mode' | 'modesAvailable' | 'modeReason' | 'policy'> = {
-  provenance: 'mock', sensorInStream: true, imu: { present: true, streaming: true, origin: 'simulated', moving: false, motion_level: 0.05, eeg_contaminated: false, seconds_since_last_sample: 0.01 },
+  provenance: 'mock', requested: 'eeg_only', motionRestart: false, sensorInStream: true, imu: { present: true, streaming: true, origin: 'simulated', moving: false, motion_level: 0.05, eeg_contaminated: false, seconds_since_last_sample: 0.01 },
   lastGesture: null, gestureCal: null, abstain: null,
 }
 

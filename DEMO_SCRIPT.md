@@ -84,16 +84,20 @@ confirmation and healthy signals. The Demo tab never presses YES/SEND for the pa
      **EEG-only**, every choice and every YES/NO is by SSVEP, and head nod / shake / tilt show *not available*.
      Movement is never assumed: the headset's motion-sensor channels are listed as "present in the data
      stream, not evaluated".
-   - **Hybrid example (design preview, not yet backed by the backend):** pick *Patient with reliable residual
-     head movement* under **UI preview with mock states**. Point at the **MOCK · UI PREVIEW · NOT BACKEND
-     STATE** banner: after a passing nod/shake check *and* a caregiver switch, the patient could answer
-     YES with a nod **during navigation**; EEG still picks the choice, conflicting signals abstain (*Conflicting
-     signals* mock), and the **final SEND is always a separate EEG confirmation**. Gesture-based final
-     confirmation stays disabled until real-world false-activation testing supports it; EEG-only always works.
-   - Neither example is validated. The **"Which method suits which patient?"** section of the comparison page
-     shows *NOT MEASURED* for all four strategies (Fixed EEG-only, Adaptive EEG-only, Hybrid EEG + IMU,
-     Optimized multimodal) until the backend publishes the multimodal benchmark; then it shows which method
-     is best per patient group, from the data.
+   - **Hybrid example (backend v1.4 is live; gesture input is held for the demo):** the Inputs tab now shows the
+     backend's real state: EEG-only, per-gesture status, the movement sensor, and the policy's reason. Starting a
+     movement check, switching gestures on and simulated gestures are **held** in the UI. Agent A asked to keep gesture
+     input off until the cough/jerk false-nod fix lands, and a backend bug stops the live feed at the first gesture
+     event. To *show* the hybrid design, use the **UI preview with mock states** (*reliable residual head
+     movement*, under the **MOCK · UI PREVIEW · NOT BACKEND STATE** banner): a calibrated, caregiver-enabled nod
+     could answer YES **during navigation**; EEG still picks the choice, conflicting signals abstain, and the
+     **final SEND is always a separate EEG confirmation**.
+   - Neither example is validated. In **"Which method suits which patient?"** on the comparison page, the backend's
+     **simulated** multimodal benchmark gives the honest answer per patient group, from paired 95% CIs: always-on
+     hybrid vs adaptive EEG-only is **better in 1 of 12** patient × signal cells (reliable head control, weak EEG),
+     **worse in 6** (incl. every no-head-control cell), and no significant difference in 5. **EEG-only stays the
+     default.** Say it this way; do not present hybrid as a general win. M1/M2 "sent while idle" values are
+     withheld (backend investigating).
 
 Accessibility notes for Q&A: the patient screen uses Atkinson Hyperlegible and very large
 targets; operator tabs, overlays (dialog / alertdialog / status) and the evidence progress bar

@@ -7,7 +7,7 @@ import {
 import { originLabel } from '../mode'
 import type { State } from '../types'
 import { AB_SEED, type ArmResult, conditionsMatch, type LiveAB as LiveABApi, startBlocker } from '../useLiveAB'
-import { METHOD_INFO, readInputs, readMultimodalBench } from '../multimodal'
+import { hybridVerdictCounts, METHOD_INFO, type MMBench, readInputs, readMultimodalBench } from '../multimodal'
 import { MethodTable, PolicyCard } from './Inputs'
 import MultimodalBench from './MultimodalBench'
 import { ModeBadge } from './PatientView'
@@ -465,7 +465,20 @@ function BenchPanel({ bench, scenario, message, n, snr, setSnr }: { bench: Bench
 
 
 /** 20-second judge summary: effort (EXACT), speed vs safety (BENCHMARK), input per patient (state / NOT MEASURED). */
-function JudgeSummary({ s, row, bench }: { s: State; row?: CompareRow; bench: Bench | null }) {
+/** One honest line about hybrid input from the report's CI-based verdicts (simulated). */
+function HybridVerdictSummary({ mm }: { mm: MMBench | null }) {
+  const c = hybridVerdictCounts(mm)
+  if (!mm || c.total === 0) return <p className="flex items-center gap-2 text-xs text-muted"><Tag tag="NONE" /> benefit of hybrid input per patient: not measured yet</p>
+  return (
+    <p className="text-xs" data-testid="sum-hybrid">
+      Always-on hybrid vs adaptive EEG-only, {c.total} simulated patient × signal cells: <b className="text-green-300">better in {c.better}</b>,{' '}
+      <b className="text-red-300">worse in {c.worse}</b>, no significant difference in {c['no significant difference']}. EEG-only stays the default.{' '}
+      <Tag tag="BENCHMARK" />
+    </p>
+  )
+}
+
+function JudgeSummary({ s, row, bench, mm }: { s: State; row?: CompareRow; bench: Bench | null; mm: MMBench | null }) {
   const { fixed, full } = summaryRows(bench)
   const inputs = readInputs(s)
   const gesturesActive = (['nod_yes', 'shake_no', 'tilt_nav'] as const).filter((k) => inputs.methods[k].active)
@@ -502,7 +515,7 @@ function JudgeSummary({ s, row, bench }: { s: State; row?: CompareRow; bench: Be
         <p className="text-xs font-bold uppercase tracking-wider text-muted">3 · Input fits the patient</p>
         <p className="text-lg font-black">{gesturesActive.length ? `EEG + ${gesturesActive.map((k) => METHOD_INFO[k].label.toLowerCase()).join(', ')}` : 'Now: EEG-only'}</p>
         <p className="text-sm">Head movement is never assumed. Gestures are used only after a passing calibration and a caregiver switch; final SEND is always confirmed by EEG.</p>
-        <p className="flex items-center gap-2 text-xs text-muted"><Tag tag="NONE" /> benefit of hybrid input per patient: not measured yet</p>
+        <HybridVerdictSummary mm={mm} />
       </div>
     </section>
   )
@@ -525,6 +538,7 @@ function SafetyInvariant({ s }: { s: State }) {
 export default function ComparePage({ s, ab }: { s: State; ab: LiveABApi }) {
   const [data, setData] = useState<CompareData | null>(null)
   const [bench, setBench] = useState<Bench | null>(null)
+  const [mmRaw, setMmRaw] = useState<unknown>(null)
   const [err, setErr] = useState<string | null>(null)
   const [scenario, setScenario] = useState('B')
   const [message, setMessage] = useState('turn-left')
@@ -534,9 +548,11 @@ export default function ComparePage({ s, ab }: { s: State; ab: LiveABApi }) {
   useEffect(() => {
     get<CompareData>('/api/routing/compare').then(setData).catch((e: Error) => setErr(e.message))
     get<Bench>('/api/benchmark').then(setBench).catch(() => setBench({ available: false }))
+    get('/api/benchmark/multimodal').then(setMmRaw).catch(() => setMmRaw(null))
   }, [])
 
   const row = findRow(data, scenario, message, n)
+  const mm = readMultimodalBench(mmRaw)
   const sc = data?.scenarios.find((x) => x.id === scenario)
   const profile = sc?.profile ?? 'new-patient'
   const profileName = sc?.title ?? profile
@@ -552,7 +568,7 @@ export default function ComparePage({ s, ab }: { s: State; ab: LiveABApi }) {
         </div>
         <ModeBadge s={s} />
       </header>
-      <JudgeSummary s={s} row={row} bench={bench} />
+      <JudgeSummary s={s} row={row} bench={bench} mm={mm} />
       <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
         Numbers are tagged: <Tag tag="EXACT" /> navigator count · <Tag tag="ESTIMATE" /> routing model · <Tag tag="BENCHMARK" /> controlled simulated runs · <Tag tag="DEMO" /> one live run · <Tag tag="MEASURED" origin="simulated" /> saved runs on this machine · <Tag tag="NONE" />. Research prototype; no real-EEG performance is claimed.
       </p>
@@ -578,7 +594,7 @@ export default function ComparePage({ s, ab }: { s: State; ab: LiveABApi }) {
           <Delta row={row} />
           <SafetyInvariant s={s} />
           <BenchPanel bench={bench} scenario={scenario} message={message} n={n} snr={snr} setSnr={setSnr} />
-          <MultimodalBench mm={readMultimodalBench(bench)} />
+          <MultimodalBench mm={mm} />
           <LiveAB s={s} node={node} profile={profile} n={n} ab={ab} />
         </>
       )}

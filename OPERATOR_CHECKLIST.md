@@ -39,6 +39,7 @@ patient history from the UI.** The only history step is a manual file move, with
 | Comparison shows **NOT MEASURED** / "benchmark not published" | `/api/benchmark` has no report | Honest state; say so. Do not quote numbers that are not on screen. |
 | Live A/B: "**NOT comparable**: …" | The two arms did not run under identical conditions | Say so; rerun after **Reset demo**, or skip the live run and use the benchmark. |
 | HELP NOW overlay | Demo control only | Caregiver: acknowledge. |
+| Inputs tab: "Gesture controls are held for the demo" | Intended: gesture input off (backend fix pending) | Leave it. Do **not** start gesture calibration or `sim_gesture` via the API: on backend v1.4 the first gesture event stops the live feed (UI shows **Connection lost**); recovery = restart the backend. |
 
 ## Recovery recipes
 

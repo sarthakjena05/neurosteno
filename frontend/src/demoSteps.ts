@@ -98,7 +98,7 @@ export const DEMO_STEPS: DemoStep[] = [
   },
   {
     id: 'inputs', title: 'Every patient is different', budget_s: 20, goTab: 'Inputs',
-    say: ['“NeuroSteno doesn’t assume every patient has the same abilities. It calibrates available brain and movement signals, then selects the fastest reliable communication method for that patient.”', 'EEG-only example (works today, simulated): gestures show “not available”, so movement is never assumed. Hybrid example: Inputs tab, UI preview, “reliable residual head movement” (MOCK until the backend publishes gesture input): a nod can answer YES during navigation, but the final SEND is always a separate EEG confirmation. Neither is validated; the per-patient benchmark shows NOT MEASURED until it exists.'],
+    say: ['“NeuroSteno doesn’t assume every patient has the same abilities. It calibrates available brain and movement signals, then selects the fastest reliable communication method for that patient.”', 'EEG-only example (works today, simulated): the Inputs tab shows the live backend state: EEG-only, movement never assumed. Gesture input is held for the demo (backend fix pending). Hybrid design: Inputs tab → UI preview (MOCK) “reliable residual head movement”: a nod can answer YES during navigation; the final SEND is always a separate EEG confirmation.', 'Simulated benchmark, per patient: always-on hybrid beats adaptive EEG-only in 1 of 12 cells (reliable head control, weak EEG), is worse in 6 (every no-head-control cell), no difference in 5. EEG-only stays the default. Nothing here is validated on real patients.'],
     actions: [],
   },
 ]

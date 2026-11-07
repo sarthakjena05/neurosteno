@@ -1,0 +1,5359 @@
+{
+ "available": true,
+ "schema_version": "1.0",
+ "kind": "simulated_multimodal_benchmark",
+ "data_origin": "simulated",
+ "real_eeg": false,
+ "real_imu": false,
+ "generated_at": "2026-11-07T15:40:49",
+ "runtime_s": 190.2,
+ "command": "python scripts/run_multimodal_benchmark.py --replicates 5 --tasks 14 --idle 180 --test-per-target 40 --test-rest 60 --gesture-trials 40 --gesture-natural 900",
+ "research_question": "Does adding optional head gestures (IMU) to SSVEP selection increase correctly confirmed messages per minute, and for which synthetic patient profiles?",
+ "disclaimer": "SIMULATED. Synthetic EEG and synthetic head motion decoded by the real FBCCA and gesture code. Not empirical or clinical evidence.",
+ "config": {
+  "n_tasks": 14,
+  "idle_s": 180.0,
+  "test_per_target": 40,
+  "test_rest": 60,
+  "gesture_test_per_kind": 40,
+  "gesture_natural_s": 900.0,
+  "replicates": 5,
+  "motion_profiles": [
+   "no_head_control",
+   "accurate",
+   "unreliable",
+   "high_motion"
+  ],
+  "snr_levels_uv": {
+   "low": 1.0,
+   "medium": 1.4,
+   "high": 2.0
+  },
+  "session_minutes_for_amortisation": 30.0
+ },
+ "conditions": [
+  {
+   "key": "M1",
+   "label": "M1: fixed-menu EEG-only"
+  },
+  {
+   "key": "M2",
+   "label": "M2: context-aware EEG-only"
+  },
+  {
+   "key": "M3",
+   "label": "M3: adaptive EEG-only (NeuroSteno)"
+  },
+  {
+   "key": "M4",
+   "label": "M4: hybrid EEG selection + IMU confirmation (always on)"
+  },
+  {
+   "key": "M5",
+   "label": "M5: optimised multimodal policy"
+  }
+ ],
+ "metrics_definitions": {
+  "cmpm": "correctly confirmed messages per minute of task time",
+  "mean_task_s": "mean time per requested message (latency), incl. failed attempts until timeout",
+  "error_rate": "wrong messages sent / messages sent",
+  "accidental_activations_per_hour": "false gesture events that changed something (false step YES/NO, spurious tilt-back) per hour",
+  "corrections_per_message": "rejected highlights + Go-back selections + tilt-backs per requested message",
+  "idle_false_sent_per_hour": "messages sent during a no-control block (patient attends nothing)",
+  "calibration_overhead_s": "protocol time for the calibrations the condition needs",
+  "cmpm_30min_incl_calibration": "cmpm x (30 min - calibration) / 30 min",
+  "regret_vs_oracle": "oracle CMPM (best fixed candidate policy in hindsight) - condition CMPM"
+ },
+ "summary": {
+  "cells": [
+   {
+    "motion_profile": "no_head_control",
+    "snr_level": "low",
+    "snr_uv": 1.0,
+    "replicates": 5,
+    "conditions": {
+     "M1": {
+      "label": "M1: fixed-menu EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.7517,
+       "ci95": [
+        0.6377,
+        0.8973
+       ]
+      },
+      "mean_task_s": {
+       "mean": 82.592,
+       "ci95": [
+        70.408,
+        94.416
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0182,
+       "ci95": [
+        0.0,
+        0.0545
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 3.07,
+       "ci95": [
+        2.1492,
+        3.95
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 39.5098,
+       "ci95": [
+        15.824,
+        63.1956
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.5508,
+       "ci95": [
+        0.4673,
+        0.6517
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 71.22,
+       "ci95": [
+        57.632,
+        88.596
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": -0.3084,
+       "ci95": [
+        -0.5163,
+        -0.1005
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": -0.3084,
+       "ci95": [
+        -0.5163,
+        -0.1005
+       ]
+      }
+     },
+     "M2": {
+      "label": "M2: context-aware EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.7527,
+       "ci95": [
+        0.4822,
+        1.0552
+       ]
+      },
+      "mean_task_s": {
+       "mean": 88.514,
+       "ci95": [
+        60.4,
+        120.58
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0095,
+       "ci95": [
+        0.0,
+        0.0286
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 4.22,
+       "ci95": [
+        2.16,
+        6.98
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 35.3358,
+       "ci95": [
+        11.8344,
+        62.8272
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.5516,
+       "ci95": [
+        0.3533,
+        0.7733
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 54.074,
+       "ci95": [
+        48.18,
+        60.81
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": -0.3095,
+       "ci95": [
+        -0.5401,
+        -0.0049
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": -0.3095,
+       "ci95": [
+        -0.5401,
+        -0.0298
+       ]
+      }
+     },
+     "M3": {
+      "label": "M3: adaptive EEG-only (NeuroSteno)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.2426,
+       "ci95": [
+        0.0842,
+        0.4604
+       ]
+      },
+      "mean_task_s": {
+       "mean": 207.738,
+       "ci95": [
+        145.692,
+        259.63
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 4.52,
+       "ci95": [
+        2.97,
+        6.07
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.1778,
+       "ci95": [
+        0.0618,
+        0.3374
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 143.886,
+       "ci95": [
+        103.632,
+        175.35
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.2007,
+       "ci95": [
+        0.0845,
+        0.3187
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.2007,
+       "ci95": [
+        0.0845,
+        0.3187
+       ]
+      }
+     },
+     "M4": {
+      "label": "M4: hybrid EEG selection + IMU confirmation (always on)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.1801,
+       "ci95": [
+        0.0607,
+        0.3332
+       ]
+      },
+      "mean_task_s": {
+       "mean": 219.984,
+       "ci95": [
+        170.168,
+        265.398
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 3.83,
+       "ci95": [
+        2.48,
+        5.11
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.1192,
+       "ci95": [
+        0.0402,
+        0.2168
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 122.43,
+       "ci95": [
+        95.76,
+        147.462
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.2631,
+       "ci95": [
+        0.1497,
+        0.3563
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.2631,
+       "ci95": [
+        0.1569,
+        0.3563
+       ]
+      }
+     },
+     "M5": {
+      "label": "M5: optimised multimodal policy",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.2685,
+       "ci95": [
+        0.1802,
+        0.3667
+       ]
+      },
+      "mean_task_s": {
+       "mean": 187.674,
+       "ci95": [
+        148.274,
+        230.472
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 3.3,
+       "ci95": [
+        1.9,
+        4.7
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.1777,
+       "ci95": [
+        0.1075,
+        0.2453
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 119.884,
+       "ci95": [
+        79.236,
+        150.668
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.1747,
+       "ci95": [
+        -0.0331,
+        0.3358
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.1747,
+       "ci95": [
+        -0.0438,
+        0.3284
+       ]
+      },
+      "initial_policies": {
+       "eeg_only|n3|context|explicit": 2,
+       "eeg_only|n5|context|explicit": 1,
+       "eeg_only|n5|context|gated": 1,
+       "eeg_only|n5|static|gated": 1
+      },
+      "policy_selection_regret": {
+       "mean": 0.1979,
+       "ci95": [
+        -0.0315,
+        0.3667
+       ],
+       "note": "oracle CMPM minus the CMPM of the initially selected policy run as a fixed policy on the same sessions"
+      },
+      "policy_switches_per_session": 15.2
+     }
+    }
+   },
+   {
+    "motion_profile": "no_head_control",
+    "snr_level": "medium",
+    "snr_uv": 1.4,
+    "replicates": 5,
+    "conditions": {
+     "M1": {
+      "label": "M1: fixed-menu EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.3431,
+       "ci95": [
+        1.2084,
+        1.4893
+       ]
+      },
+      "mean_task_s": {
+       "mean": 45.238,
+       "ci95": [
+        40.68,
+        50.166
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.38,
+       "ci95": [
+        0.2897,
+        0.46
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 43.3738,
+       "ci95": [
+        19.711,
+        59.2886
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.9842,
+       "ci95": [
+        0.8836,
+        1.0914
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 38.434,
+       "ci95": [
+        35.056,
+        43.51
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": -0.0917,
+       "ci95": [
+        -0.4158,
+        0.2324
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": -0.0917,
+       "ci95": [
+        -0.4158,
+        0.2244
+       ]
+      }
+     },
+     "M2": {
+      "label": "M2: context-aware EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.6704,
+       "ci95": [
+        1.4508,
+        1.8988
+       ]
+      },
+      "mean_task_s": {
+       "mean": 36.8,
+       "ci95": [
+        31.7835,
+        41.488
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.24,
+       "ci95": [
+        0.11,
+        0.41
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 42.5892,
+       "ci95": [
+        15.8114,
+        69.367
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.224,
+       "ci95": [
+        1.0631,
+        1.4098
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 22.79,
+       "ci95": [
+        20.868,
+        25.3066
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": -0.419,
+       "ci95": [
+        -0.698,
+        -0.1474
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": -0.419,
+       "ci95": [
+        -0.698,
+        -0.1195
+       ]
+      }
+     },
+     "M3": {
+      "label": "M3: adaptive EEG-only (NeuroSteno)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.9367,
+       "ci95": [
+        0.8137,
+        1.0787
+       ]
+      },
+      "mean_task_s": {
+       "mean": 65.61,
+       "ci95": [
+        56.53,
+        74.362
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.9,
+       "ci95": [
+        0.61,
+        1.21
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.6864,
+       "ci95": [
+        0.6052,
+        0.7905
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 43.684,
+       "ci95": [
+        37.834,
+        49.726
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.3147,
+       "ci95": [
+        0.177,
+        0.4524
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.3147,
+       "ci95": [
+        0.188,
+        0.4524
+       ]
+      }
+     },
+     "M4": {
+      "label": "M4: hybrid EEG selection + IMU confirmation (always on)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.6958,
+       "ci95": [
+        0.6073,
+        0.8198
+       ]
+      },
+      "mean_task_s": {
+       "mean": 88.594,
+       "ci95": [
+        76.37,
+        99.356
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.98,
+       "ci95": [
+        0.65,
+        1.31
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.4604,
+       "ci95": [
+        0.4018,
+        0.5424
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 52.422,
+       "ci95": [
+        45.282,
+        59.562
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.5556,
+       "ci95": [
+        0.4089,
+        0.7022
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.5556,
+       "ci95": [
+        0.4089,
+        0.7022
+       ]
+      }
+     },
+     "M5": {
+      "label": "M5: optimised multimodal policy",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.8699,
+       "ci95": [
+        0.5716,
+        1.2471
+       ]
+      },
+      "mean_task_s": {
+       "mean": 81.554,
+       "ci95": [
+        53.93,
+        114.854
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 1.24,
+       "ci95": [
+        0.55,
+        2.25
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.5756,
+       "ci95": [
+        0.3799,
+        0.8235
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 64.206,
+       "ci95": [
+        41.748,
+        90.828
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.3815,
+       "ci95": [
+        0.1612,
+        0.7063
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.3815,
+       "ci95": [
+        0.1612,
+        0.7063
+       ]
+      },
+      "initial_policies": {
+       "eeg_only|n3|static|explicit": 1,
+       "eeg_only|n5|context|explicit": 1,
+       "eeg_only|n5|context|gated": 1,
+       "eeg_only|n5|static|explicit": 2
+      },
+      "policy_selection_regret": {
+       "mean": 0.3509,
+       "ci95": [
+        0.0844,
+        0.6972
+       ],
+       "note": "oracle CMPM minus the CMPM of the initially selected policy run as a fixed policy on the same sessions"
+      },
+      "policy_switches_per_session": 3.0
+     }
+    }
+   },
+   {
+    "motion_profile": "no_head_control",
+    "snr_level": "high",
+    "snr_uv": 2.0,
+    "replicates": 5,
+    "conditions": {
+     "M1": {
+      "label": "M1: fixed-menu EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.7749,
+       "ci95": [
+        1.5949,
+        1.9093
+       ]
+      },
+      "mean_task_s": {
+       "mean": 34.216,
+       "ci95": [
+        31.428,
+        37.91
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.54,
+       "ci95": [
+        0.15,
+        0.9802
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 62.9472,
+       "ci95": [
+        51.2082,
+        74.5342
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.3006,
+       "ci95": [
+        1.1795,
+        1.3991
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 29.222,
+       "ci95": [
+        25.998,
+        33.046
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.4924,
+       "ci95": [
+        0.1139,
+        0.9832
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.4924,
+       "ci95": [
+        0.117,
+        0.9831
+       ]
+      }
+     },
+     "M2": {
+      "label": "M2: context-aware EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 2.0458,
+       "ci95": [
+        1.9645,
+        2.1278
+       ]
+      },
+      "mean_task_s": {
+       "mean": 29.394,
+       "ci95": [
+        28.232,
+        30.556
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0095,
+       "ci95": [
+        0.0,
+        0.0286
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.45,
+       "ci95": [
+        0.11,
+        0.84
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 55.3692,
+       "ci95": [
+        35.5736,
+        79.1628
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.4991,
+       "ci95": [
+        1.4395,
+        1.5586
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 19.604,
+       "ci95": [
+        17.186,
+        22.416
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.2216,
+       "ci95": [
+        -0.0361,
+        0.5645
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.2216,
+       "ci95": [
+        -0.0439,
+        0.5645
+       ]
+      }
+     },
+     "M3": {
+      "label": "M3: adaptive EEG-only (NeuroSteno)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.6072,
+       "ci95": [
+        1.4198,
+        1.799
+       ]
+      },
+      "mean_task_s": {
+       "mean": 38.006,
+       "ci95": [
+        33.666,
+        42.346
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.5,
+       "ci95": [
+        0.38,
+        0.62
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.1777,
+       "ci95": [
+        1.0404,
+        1.3185
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 24.114,
+       "ci95": [
+        21.408,
+        26.942
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.6602,
+       "ci95": [
+        0.55,
+        0.806
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.6602,
+       "ci95": [
+        0.5496,
+        0.8058
+       ]
+      }
+     },
+     "M4": {
+      "label": "M4: hybrid EEG selection + IMU confirmation (always on)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.0594,
+       "ci95": [
+        0.9225,
+        1.1963
+       ]
+      },
+      "mean_task_s": {
+       "mean": 57.982,
+       "ci95": [
+        50.4695,
+        65.388
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.41,
+       "ci95": [
+        0.31,
+        0.54
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.701,
+       "ci95": [
+        0.6104,
+        0.7916
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 35.822,
+       "ci95": [
+        33.77,
+        38.32
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 1.2079,
+       "ci95": [
+        1.0466,
+        1.4065
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 1.2079,
+       "ci95": [
+        1.0466,
+        1.4065
+       ]
+      }
+     },
+     "M5": {
+      "label": "M5: optimised multimodal policy",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.3006,
+       "ci95": [
+        1.0822,
+        1.6352
+       ]
+      },
+      "mean_task_s": {
+       "mean": 48.45,
+       "ci95": [
+        38.884,
+        55.784
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.56,
+       "ci95": [
+        0.42,
+        0.68
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.8606,
+       "ci95": [
+        0.7161,
+        1.082
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 32.08,
+       "ci95": [
+        27.82,
+        35.166
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.9667,
+       "ci95": [
+        0.8001,
+        1.1348
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.9667,
+       "ci95": [
+        0.8001,
+        1.1348
+       ]
+      },
+      "initial_policies": {
+       "eeg_only|n3|context|explicit": 2,
+       "eeg_only|n5|context|explicit": 1,
+       "eeg_only|n5|static|explicit": 2
+      },
+      "policy_selection_regret": {
+       "mean": 0.9442,
+       "ci95": [
+        0.7557,
+        1.1121
+       ],
+       "note": "oracle CMPM minus the CMPM of the initially selected policy run as a fixed policy on the same sessions"
+      },
+      "policy_switches_per_session": 8.2
+     }
+    }
+   },
+   {
+    "motion_profile": "accurate",
+    "snr_level": "low",
+    "snr_uv": 1.0,
+    "replicates": 5,
+    "conditions": {
+     "M1": {
+      "label": "M1: fixed-menu EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.7125,
+       "ci95": [
+        0.6535,
+        0.79
+       ]
+      },
+      "mean_task_s": {
+       "mean": 85.21,
+       "ci95": [
+        77.254,
+        92.434
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 3.15,
+       "ci95": [
+        2.54,
+        4.0
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 43.0058,
+       "ci95": [
+        27.791,
+        61.8248
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.5221,
+       "ci95": [
+        0.4778,
+        0.5789
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 74.678,
+       "ci95": [
+        64.33,
+        84.668
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": -0.2467,
+       "ci95": [
+        -0.4325,
+        -0.0339
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": -0.2467,
+       "ci95": [
+        -0.4212,
+        -0.0452
+       ]
+      }
+     },
+     "M2": {
+      "label": "M2: context-aware EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.7711,
+       "ci95": [
+        0.5473,
+        1.004
+       ]
+      },
+      "mean_task_s": {
+       "mean": 81.736,
+       "ci95": [
+        63.404,
+        100.708
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0095,
+       "ci95": [
+        0.0,
+        0.0286
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 3.62,
+       "ci95": [
+        2.13,
+        5.25
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 34.9518,
+       "ci95": [
+        15.479,
+        50.3552
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.565,
+       "ci95": [
+        0.411,
+        0.7357
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 52.062,
+       "ci95": [
+        46.252,
+        59.958
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": -0.3052,
+       "ci95": [
+        -0.4774,
+        -0.1194
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": -0.3052,
+       "ci95": [
+        -0.4671,
+        -0.1194
+       ]
+      }
+     },
+     "M3": {
+      "label": "M3: adaptive EEG-only (NeuroSteno)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.2198,
+       "ci95": [
+        0.0887,
+        0.3977
+       ]
+      },
+      "mean_task_s": {
+       "mean": 213.77,
+       "ci95": [
+        156.64,
+        263.392
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 4.23,
+       "ci95": [
+        2.32,
+        6.14
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.161,
+       "ci95": [
+        0.065,
+        0.2914
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 154.94,
+       "ci95": [
+        111.5,
+        191.096
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.2461,
+       "ci95": [
+        0.1169,
+        0.358
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.2461,
+       "ci95": [
+        0.1169,
+        0.3496
+       ]
+      }
+     },
+     "M4": {
+      "label": "M4: hybrid EEG selection + IMU confirmation (always on)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.4041,
+       "ci95": [
+        0.206,
+        0.6329
+       ]
+      },
+      "mean_task_s": {
+       "mean": 162.274,
+       "ci95": [
+        111.2665,
+        217.024
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 1.186,
+       "ci95": [
+        0.0,
+        3.294
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 1.42,
+       "ci95": [
+        0.81,
+        2.23
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.2674,
+       "ci95": [
+        0.1321,
+        0.4189
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 97.916,
+       "ci95": [
+        70.4574,
+        120.27
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.0618,
+       "ci95": [
+        -0.1044,
+        0.1978
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.0618,
+       "ci95": [
+        -0.1044,
+        0.1978
+       ]
+      }
+     },
+     "M5": {
+      "label": "M5: optimised multimodal policy",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.2221,
+       "ci95": [
+        0.1292,
+        0.2942
+       ]
+      },
+      "mean_task_s": {
+       "mean": 203.408,
+       "ci95": [
+        171.6351,
+        243.966
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 3.54,
+       "ci95": [
+        2.03,
+        4.94
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.147,
+       "ci95": [
+        0.0859,
+        0.1955
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 165.166,
+       "ci95": [
+        145.184,
+        187.054
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.2437,
+       "ci95": [
+        0.0161,
+        0.4961
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.2437,
+       "ci95": [
+        0.0161,
+        0.4961
+       ]
+      },
+      "initial_policies": {
+       "eeg_only|n3|context|explicit": 1,
+       "eeg_only|n5|context|explicit": 1,
+       "hybrid|n3|context|explicit": 1,
+       "hybrid|n5|static|explicit": 2
+      },
+      "policy_selection_regret": {
+       "mean": 0.2138,
+       "ci95": [
+        -0.0758,
+        0.4768
+       ],
+       "note": "oracle CMPM minus the CMPM of the initially selected policy run as a fixed policy on the same sessions"
+      },
+      "policy_switches_per_session": 20.8
+     }
+    }
+   },
+   {
+    "motion_profile": "accurate",
+    "snr_level": "medium",
+    "snr_uv": 1.4,
+    "replicates": 5,
+    "conditions": {
+     "M1": {
+      "label": "M1: fixed-menu EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.4008,
+       "ci95": [
+        1.2252,
+        1.5673
+       ]
+      },
+      "mean_task_s": {
+       "mean": 43.614,
+       "ci95": [
+        39.0318,
+        49.698
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0095,
+       "ci95": [
+        0.0,
+        0.0286
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.29,
+       "ci95": [
+        0.11,
+        0.5102
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 47.3724,
+       "ci95": [
+        23.9076,
+        74.7766
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.0265,
+       "ci95": [
+        0.9037,
+        1.143
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 35.526,
+       "ci95": [
+        32.248,
+        39.674
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.02,
+       "ci95": [
+        -0.3411,
+        0.3886
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.02,
+       "ci95": [
+        -0.3411,
+        0.4496
+       ]
+      }
+     },
+     "M2": {
+      "label": "M2: context-aware EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.6262,
+       "ci95": [
+        1.3486,
+        1.9728
+       ]
+      },
+      "mean_task_s": {
+       "mean": 38.492,
+       "ci95": [
+        32.245,
+        44.718
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.3,
+       "ci95": [
+        0.17,
+        0.48
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 31.4818,
+       "ci95": [
+        15.5336,
+        47.6484
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.1916,
+       "ci95": [
+        0.9882,
+        1.4456
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 24.832,
+       "ci95": [
+        22.348,
+        28.094
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": -0.2055,
+       "ci95": [
+        -0.4833,
+        0.0361
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": -0.2055,
+       "ci95": [
+        -0.4833,
+        0.0314
+       ]
+      }
+     },
+     "M3": {
+      "label": "M3: adaptive EEG-only (NeuroSteno)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.0062,
+       "ci95": [
+        0.8805,
+        1.1588
+       ]
+      },
+      "mean_task_s": {
+       "mean": 61.002,
+       "ci95": [
+        53.066,
+        68.434
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.8,
+       "ci95": [
+        0.45,
+        1.16
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.7373,
+       "ci95": [
+        0.6539,
+        0.8534
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 37.848,
+       "ci95": [
+        32.6195,
+        44.708
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.4146,
+       "ci95": [
+        0.2554,
+        0.6039
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.4146,
+       "ci95": [
+        0.2552,
+        0.5845
+       ]
+      }
+     },
+     "M4": {
+      "label": "M4: hybrid EEG selection + IMU confirmation (always on)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.1303,
+       "ci95": [
+        0.8699,
+        1.4225
+       ]
+      },
+      "mean_task_s": {
+       "mean": 57.118,
+       "ci95": [
+        44.448,
+        69.788
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 2.062,
+       "ci95": [
+        0.514,
+        3.61
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.7,
+       "ci95": [
+        0.29,
+        1.11
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.7479,
+       "ci95": [
+        0.5715,
+        0.9371
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 40.35,
+       "ci95": [
+        31.048,
+        51.73
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.2904,
+       "ci95": [
+        0.131,
+        0.4423
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.2904,
+       "ci95": [
+        0.131,
+        0.4423
+       ]
+      }
+     },
+     "M5": {
+      "label": "M5: optimised multimodal policy",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.869,
+       "ci95": [
+        0.603,
+        1.1954
+       ]
+      },
+      "mean_task_s": {
+       "mean": 80.074,
+       "ci95": [
+        55.292,
+        112.636
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 1.58,
+       "ci95": [
+        0.7,
+        2.92
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.575,
+       "ci95": [
+        0.399,
+        0.7884
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 59.014,
+       "ci95": [
+        42.442,
+        79.478
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.5517,
+       "ci95": [
+        0.3547,
+        0.7859
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.5517,
+       "ci95": [
+        0.3344,
+        0.7612
+       ]
+      },
+      "initial_policies": {
+       "eeg_only|n3|static|explicit": 1,
+       "eeg_only|n5|context|explicit": 1,
+       "eeg_only|n5|static|explicit": 2,
+       "hybrid|n2|context|explicit": 1
+      },
+      "policy_selection_regret": {
+       "mean": 0.6547,
+       "ci95": [
+        0.3386,
+        0.9708
+       ],
+       "note": "oracle CMPM minus the CMPM of the initially selected policy run as a fixed policy on the same sessions"
+      },
+      "policy_switches_per_session": 4.4
+     }
+    }
+   },
+   {
+    "motion_profile": "accurate",
+    "snr_level": "high",
+    "snr_uv": 2.0,
+    "replicates": 5,
+    "conditions": {
+     "M1": {
+      "label": "M1: fixed-menu EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.7144,
+       "ci95": [
+        1.5416,
+        1.8445
+       ]
+      },
+      "mean_task_s": {
+       "mean": 35.448,
+       "ci95": [
+        32.546,
+        39.6
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.67,
+       "ci95": [
+        0.27,
+        1.16
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 51.301,
+       "ci95": [
+        35.3906,
+        67.0976
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.2563,
+       "ci95": [
+        1.1356,
+        1.3523
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 28.388,
+       "ci95": [
+        26.138,
+        30.364
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.5032,
+       "ci95": [
+        0.2147,
+        0.9109
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.5032,
+       "ci95": [
+        0.1896,
+        0.9227
+       ]
+      }
+     },
+     "M2": {
+      "label": "M2: context-aware EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.9955,
+       "ci95": [
+        1.8802,
+        2.1147
+       ]
+      },
+      "mean_task_s": {
+       "mean": 30.204,
+       "ci95": [
+        28.456,
+        31.94
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.54,
+       "ci95": [
+        0.1795,
+        0.92
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 51.2672,
+       "ci95": [
+        43.0348,
+        59.4996
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.4623,
+       "ci95": [
+        1.3804,
+        1.5496
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 20.642,
+       "ci95": [
+        18.126,
+        24.5825
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.2221,
+       "ci95": [
+        0.0499,
+        0.4009
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.2221,
+       "ci95": [
+        0.0366,
+        0.4023
+       ]
+      }
+     },
+     "M3": {
+      "label": "M3: adaptive EEG-only (NeuroSteno)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.6376,
+       "ci95": [
+        1.4533,
+        1.8642
+       ]
+      },
+      "mean_task_s": {
+       "mean": 37.326,
+       "ci95": [
+        32.83,
+        41.316
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.4,
+       "ci95": [
+        0.2,
+        0.58
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.2,
+       "ci95": [
+        1.0649,
+        1.3653
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 22.74,
+       "ci95": [
+        21.768,
+        23.96
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.58,
+       "ci95": [
+        0.5138,
+        0.633
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.58,
+       "ci95": [
+        0.5052,
+        0.6332
+       ]
+      }
+     },
+     "M4": {
+      "label": "M4: hybrid EEG selection + IMU confirmation (always on)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.684,
+       "ci95": [
+        1.4779,
+        1.9206
+       ]
+      },
+      "mean_task_s": {
+       "mean": 36.416,
+       "ci95": [
+        31.652,
+        40.8178
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 4.864,
+       "ci95": [
+        0.0,
+        11.208
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.22,
+       "ci95": [
+        0.11,
+        0.36
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.1142,
+       "ci95": [
+        0.9779,
+        1.2698
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 22.768,
+       "ci95": [
+        21.178,
+        24.358
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.5336,
+       "ci95": [
+        0.4832,
+        0.572
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.5336,
+       "ci95": [
+        0.485,
+        0.572
+       ]
+      }
+     },
+     "M5": {
+      "label": "M5: optimised multimodal policy",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.3776,
+       "ci95": [
+        1.1456,
+        1.7285
+       ]
+      },
+      "mean_task_s": {
+       "mean": 45.88,
+       "ci95": [
+        37.028,
+        52.641
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.39,
+       "ci95": [
+        0.21,
+        0.59
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.9116,
+       "ci95": [
+        0.7507,
+        1.1404
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 32.09,
+       "ci95": [
+        27.988,
+        36.742
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.84,
+       "ci95": [
+        0.623,
+        1.0637
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.84,
+       "ci95": [
+        0.623,
+        1.0695
+       ]
+      },
+      "initial_policies": {
+       "eeg_only|n3|context|explicit": 2,
+       "eeg_only|n5|context|explicit": 1,
+       "eeg_only|n5|static|explicit": 2
+      },
+      "policy_selection_regret": {
+       "mean": 0.8452,
+       "ci95": [
+        0.6244,
+        1.0661
+       ],
+       "note": "oracle CMPM minus the CMPM of the initially selected policy run as a fixed policy on the same sessions"
+      },
+      "policy_switches_per_session": 6.4
+     }
+    }
+   },
+   {
+    "motion_profile": "unreliable",
+    "snr_level": "low",
+    "snr_uv": 1.0,
+    "replicates": 5,
+    "conditions": {
+     "M1": {
+      "label": "M1: fixed-menu EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.6761,
+       "ci95": [
+        0.6519,
+        0.7049
+       ]
+      },
+      "mean_task_s": {
+       "mean": 88.936,
+       "ci95": [
+        85.306,
+        92.524
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 3.73,
+       "ci95": [
+        3.12,
+        4.33
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 43.2838,
+       "ci95": [
+        19.539,
+        63.3052
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.4954,
+       "ci95": [
+        0.4755,
+        0.5165
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 68.368,
+       "ci95": [
+        59.734,
+        75.38
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": -0.2356,
+       "ci95": [
+        -0.4553,
+        -0.003
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": -0.2726,
+       "ci95": [
+        -0.4526,
+        -0.0861
+       ]
+      }
+     },
+     "M2": {
+      "label": "M2: context-aware EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.8424,
+       "ci95": [
+        0.5854,
+        1.0994
+       ]
+      },
+      "mean_task_s": {
+       "mean": 76.206,
+       "ci95": [
+        56.146,
+        95.808
+       ]
+      },
+      "error_rate": {
+       "mean": 0.019,
+       "ci95": [
+        0.0,
+        0.0571
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 3.07,
+       "ci95": [
+        1.81,
+        4.33
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 43.2152,
+       "ci95": [
+        31.1694,
+        55.0868
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.6173,
+       "ci95": [
+        0.4289,
+        0.7991
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 44.266,
+       "ci95": [
+        33.334,
+        56.646
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": -0.4019,
+       "ci95": [
+        -0.6355,
+        -0.1684
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": -0.4389,
+       "ci95": [
+        -0.6564,
+        -0.2214
+       ]
+      }
+     },
+     "M3": {
+      "label": "M3: adaptive EEG-only (NeuroSteno)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.2349,
+       "ci95": [
+        0.0923,
+        0.4192
+       ]
+      },
+      "mean_task_s": {
+       "mean": 209.102,
+       "ci95": [
+        152.396,
+        261.958
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 4.54,
+       "ci95": [
+        2.75,
+        6.14
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.1721,
+       "ci95": [
+        0.0727,
+        0.3124
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 144.378,
+       "ci95": [
+        104.418,
+        181.614
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.2056,
+       "ci95": [
+        0.1101,
+        0.301
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.1686,
+       "ci95": [
+        0.099,
+        0.2383
+       ]
+      }
+     },
+     "M4": {
+      "label": "M4: hybrid EEG selection + IMU confirmation (always on)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.2547,
+       "ci95": [
+        0.1049,
+        0.4626
+       ]
+      },
+      "mean_task_s": {
+       "mean": 200.282,
+       "ci95": [
+        140.02,
+        245.61
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 5.49,
+       "ci95": [
+        1.938,
+        9.804
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 3.49,
+       "ci95": [
+        1.777,
+        5.64
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.1686,
+       "ci95": [
+        0.0783,
+        0.3061
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 130.27,
+       "ci95": [
+        100.654,
+        159.886
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.1857,
+       "ci95": [
+        0.03,
+        0.3167
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.1488,
+       "ci95": [
+        0.0144,
+        0.2732
+       ]
+      }
+     },
+     "M5": {
+      "label": "M5: optimised multimodal policy",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.2539,
+       "ci95": [
+        0.1503,
+        0.4077
+       ]
+      },
+      "mean_task_s": {
+       "mean": 199.036,
+       "ci95": [
+        148.126,
+        245.56
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 3.78,
+       "ci95": [
+        2.49,
+        4.83
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.168,
+       "ci95": [
+        0.0994,
+        0.2697
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 149.138,
+       "ci95": [
+        96.45,
+        205.176
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.1865,
+       "ci95": [
+        0.0481,
+        0.3126
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.1496,
+       "ci95": [
+        0.0365,
+        0.2386
+       ]
+      },
+      "initial_policies": {
+       "eeg_only|n3|context|explicit": 2,
+       "eeg_only|n5|context|explicit": 1,
+       "eeg_only|n5|context|gated": 1,
+       "eeg_only|n5|static|gated": 1
+      },
+      "policy_selection_regret": {
+       "mean": 0.2014,
+       "ci95": [
+        -0.013,
+        0.3907
+       ],
+       "note": "oracle CMPM minus the CMPM of the initially selected policy run as a fixed policy on the same sessions"
+      },
+      "policy_switches_per_session": 16.6
+     }
+    }
+   },
+   {
+    "motion_profile": "unreliable",
+    "snr_level": "medium",
+    "snr_uv": 1.4,
+    "replicates": 5,
+    "conditions": {
+     "M1": {
+      "label": "M1: fixed-menu EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.4061,
+       "ci95": [
+        1.3227,
+        1.4894
+       ]
+      },
+      "mean_task_s": {
+       "mean": 42.882,
+       "ci95": [
+        40.334,
+        45.712
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.27,
+       "ci95": [
+        0.18,
+        0.36
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 54.729,
+       "ci95": [
+        42.7528,
+        66.7052
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.0303,
+       "ci95": [
+        0.9693,
+        1.0914
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 35.854,
+       "ci95": [
+        33.796,
+        38.834
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": -0.0961,
+       "ci95": [
+        -0.357,
+        0.1648
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": -0.0961,
+       "ci95": [
+        -0.3533,
+        0.1531
+       ]
+      }
+     },
+     "M2": {
+      "label": "M2: context-aware EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.665,
+       "ci95": [
+        1.4342,
+        1.9853
+       ]
+      },
+      "mean_task_s": {
+       "mean": 37.184,
+       "ci95": [
+        31.376,
+        41.858
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.25,
+       "ci95": [
+        0.19,
+        0.31
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 42.8688,
+       "ci95": [
+        23.614,
+        63.2562
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.22,
+       "ci95": [
+        1.053,
+        1.4367
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 24.872,
+       "ci95": [
+        21.972,
+        27.816
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": -0.355,
+       "ci95": [
+        -0.5513,
+        -0.125
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": -0.355,
+       "ci95": [
+        -0.5513,
+        -0.125
+       ]
+      }
+     },
+     "M3": {
+      "label": "M3: adaptive EEG-only (NeuroSteno)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.9108,
+       "ci95": [
+        0.6918,
+        1.1269
+       ]
+      },
+      "mean_task_s": {
+       "mean": 72.232,
+       "ci95": [
+        54.852,
+        95.81
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.73,
+       "ci95": [
+        0.53,
+        1.01
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.6674,
+       "ci95": [
+        0.5069,
+        0.8256
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 43.854,
+       "ci95": [
+        39.1314,
+        48.66
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.3991,
+       "ci95": [
+        0.2977,
+        0.5065
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.3991,
+       "ci95": [
+        0.2977,
+        0.5063
+       ]
+      }
+     },
+     "M4": {
+      "label": "M4: hybrid EEG selection + IMU confirmation (always on)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.8444,
+       "ci95": [
+        0.7017,
+        1.0367
+       ]
+      },
+      "mean_task_s": {
+       "mean": 74.446,
+       "ci95": [
+        60.144,
+        85.78
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 5.07,
+       "ci95": [
+        2.298,
+        7.512
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.93,
+       "ci95": [
+        0.59,
+        1.25
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.5587,
+       "ci95": [
+        0.4643,
+        0.6863
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 51.98,
+       "ci95": [
+        42.094,
+        61.866
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.4655,
+       "ci95": [
+        0.3941,
+        0.5535
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.4655,
+       "ci95": [
+        0.3941,
+        0.5487
+       ]
+      }
+     },
+     "M5": {
+      "label": "M5: optimised multimodal policy",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.7792,
+       "ci95": [
+        0.6745,
+        0.8624
+       ]
+      },
+      "mean_task_s": {
+       "mean": 77.27,
+       "ci95": [
+        67.444,
+        90.836
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 1.82,
+       "ci95": [
+        0.79,
+        3.17
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.5156,
+       "ci95": [
+        0.4463,
+        0.5724
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 58.226,
+       "ci95": [
+        40.754,
+        82.402
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.5307,
+       "ci95": [
+        0.278,
+        0.7834
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.5307,
+       "ci95": [
+        0.278,
+        0.7834
+       ]
+      },
+      "initial_policies": {
+       "eeg_only|n3|static|explicit": 1,
+       "eeg_only|n5|context|explicit": 1,
+       "eeg_only|n5|context|gated": 1,
+       "eeg_only|n5|static|explicit": 2
+      },
+      "policy_selection_regret": {
+       "mean": 0.3867,
+       "ci95": [
+        0.133,
+        0.7296
+       ],
+       "note": "oracle CMPM minus the CMPM of the initially selected policy run as a fixed policy on the same sessions"
+      },
+      "policy_switches_per_session": 4.4
+     }
+    }
+   },
+   {
+    "motion_profile": "unreliable",
+    "snr_level": "high",
+    "snr_uv": 2.0,
+    "replicates": 5,
+    "conditions": {
+     "M1": {
+      "label": "M1: fixed-menu EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.7495,
+       "ci95": [
+        1.6137,
+        1.8697
+       ]
+      },
+      "mean_task_s": {
+       "mean": 34.54,
+       "ci95": [
+        32.118,
+        37.26
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.53,
+       "ci95": [
+        0.28,
+        0.78
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 50.9244,
+       "ci95": [
+        43.2172,
+        58.668
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.282,
+       "ci95": [
+        1.1899,
+        1.3697
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 29.742,
+       "ci95": [
+        27.568,
+        31.528
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.3977,
+       "ci95": [
+        0.1293,
+        0.716
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.3977,
+       "ci95": [
+        0.1415,
+        0.7351
+       ]
+      }
+     },
+     "M2": {
+      "label": "M2: context-aware EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 2.0322,
+       "ci95": [
+        1.8096,
+        2.295
+       ]
+      },
+      "mean_task_s": {
+       "mean": 30.066,
+       "ci95": [
+        26.336,
+        33.21
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.49,
+       "ci95": [
+        0.36,
+        0.66
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 51.4672,
+       "ci95": [
+        43.2352,
+        59.658
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.4892,
+       "ci95": [
+        1.326,
+        1.6817
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 23.052,
+       "ci95": [
+        20.012,
+        25.104
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.115,
+       "ci95": [
+        0.061,
+        0.1556
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.115,
+       "ci95": [
+        0.061,
+        0.1569
+       ]
+      }
+     },
+     "M3": {
+      "label": "M3: adaptive EEG-only (NeuroSteno)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.6007,
+       "ci95": [
+        1.3827,
+        1.8345
+       ]
+      },
+      "mean_task_s": {
+       "mean": 38.488,
+       "ci95": [
+        33.168,
+        43.746
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.45,
+       "ci95": [
+        0.29,
+        0.7
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 1.173,
+       "ci95": [
+        1.0026,
+        1.3327
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 24.176,
+       "ci95": [
+        22.718,
+        25.688
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.5465,
+       "ci95": [
+        0.494,
+        0.6006
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.5465,
+       "ci95": [
+        0.494,
+        0.6007
+       ]
+      }
+     },
+     "M4": {
+      "label": "M4: hybrid EEG selection + IMU confirmation (always on)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.2172,
+       "ci95": [
+        0.9966,
+        1.4589
+       ]
+      },
+      "mean_task_s": {
+       "mean": 51.6,
+       "ci95": [
+        42.34,
+        62.648
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 10.642,
+       "ci95": [
+        4.204,
+        17.08
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.63,
+       "ci95": [
+        0.41,
+        0.8602
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.8054,
+       "ci95": [
+        0.656,
+        0.9618
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 33.276,
+       "ci95": [
+        30.564,
+        36.174
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.93,
+       "ci95": [
+        0.8386,
+        1.0163
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.93,
+       "ci95": [
+        0.8386,
+        1.0188
+       ]
+      }
+     },
+     "M5": {
+      "label": "M5: optimised multimodal policy",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.3004,
+       "ci95": [
+        1.1085,
+        1.5896
+       ]
+      },
+      "mean_task_s": {
+       "mean": 48.078,
+       "ci95": [
+        39.522,
+        54.5119
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.48,
+       "ci95": [
+        0.27,
+        0.69
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.8604,
+       "ci95": [
+        0.7339,
+        1.0552
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 31.234,
+       "ci95": [
+        24.826,
+        37.642
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.8468,
+       "ci95": [
+        0.7133,
+        0.9802
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.8468,
+       "ci95": [
+        0.7133,
+        0.9802
+       ]
+      },
+      "initial_policies": {
+       "eeg_only|n3|context|explicit": 2,
+       "eeg_only|n5|context|explicit": 1,
+       "eeg_only|n5|static|explicit": 2
+      },
+      "policy_selection_regret": {
+       "mean": 0.8445,
+       "ci95": [
+        0.6467,
+        1.0422
+       ],
+       "note": "oracle CMPM minus the CMPM of the initially selected policy run as a fixed policy on the same sessions"
+      },
+      "policy_switches_per_session": 6.2
+     }
+    }
+   },
+   {
+    "motion_profile": "high_motion",
+    "snr_level": "low",
+    "snr_uv": 1.0,
+    "replicates": 5,
+    "conditions": {
+     "M1": {
+      "label": "M1: fixed-menu EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.0859,
+       "ci95": [
+        0.0321,
+        0.1491
+       ]
+      },
+      "mean_task_s": {
+       "mean": 247.838,
+       "ci95": [
+        209.88,
+        279.48
+       ]
+      },
+      "error_rate": {
+       "mean": 0.4481,
+       "ci95": [
+        0.1367,
+        0.7652
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 19.77,
+       "ci95": [
+        15.49,
+        22.59
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 27.4892,
+       "ci95": [
+        11.7684,
+        39.4396
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.063,
+       "ci95": [
+        0.0235,
+        0.1094
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 86.8725,
+       "ci95": [
+        71.1975,
+        107.58
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.1511,
+       "ci95": [
+        -0.0045,
+        0.3515
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.1511,
+       "ci95": [
+        -0.0045,
+        0.3515
+       ]
+      }
+     },
+     "M2": {
+      "label": "M2: context-aware EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.1384,
+       "ci95": [
+        0.0496,
+        0.2634
+       ]
+      },
+      "mean_task_s": {
+       "mean": 220.924,
+       "ci95": [
+        168.104,
+        262.87
+       ]
+      },
+      "error_rate": {
+       "mean": 0.4486,
+       "ci95": [
+        0.1846,
+        0.7434
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 16.49,
+       "ci95": [
+        11.43,
+        20.16
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 31.367,
+       "ci95": [
+        19.5192,
+        47.1392
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.1015,
+       "ci95": [
+        0.0364,
+        0.1965
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 80.072,
+       "ci95": [
+        44.1,
+        115.076
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.0986,
+       "ci95": [
+        -0.0478,
+        0.2462
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.0986,
+       "ci95": [
+        -0.0478,
+        0.2465
+       ]
+      }
+     },
+     "M3": {
+      "label": "M3: adaptive EEG-only (NeuroSteno)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.1388,
+       "ci95": [
+        0.011,
+        0.339
+       ]
+      },
+      "mean_task_s": {
+       "mean": 248.118,
+       "ci95": [
+        183.436,
+        298.714
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 5.12,
+       "ci95": [
+        3.84,
+        6.36
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.1017,
+       "ci95": [
+        0.0081,
+        0.2485
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 137.3333,
+       "ci95": [
+        88.52,
+        172.89
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.0983,
+       "ci95": [
+        0.022,
+        0.1766
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.0983,
+       "ci95": [
+        0.02,
+        0.1766
+       ]
+      }
+     },
+     "M4": {
+      "label": "M4: hybrid EEG selection + IMU confirmation (always on)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.1771,
+       "ci95": [
+        0.0061,
+        0.454
+       ]
+      },
+      "mean_task_s": {
+       "mean": 242.884,
+       "ci95": [
+        156.698,
+        303.266
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 9.218,
+       "ci95": [
+        3.45,
+        18.228
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 4.97,
+       "ci95": [
+        2.83,
+        6.76
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.1172,
+       "ci95": [
+        0.004,
+        0.2889
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 154.9433,
+       "ci95": [
+        61.19,
+        236.29
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.06,
+       "ci95": [
+        0.0027,
+        0.1316
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.06,
+       "ci95": [
+        0.0025,
+        0.1316
+       ]
+      }
+     },
+     "M5": {
+      "label": "M5: optimised multimodal policy",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.1342,
+       "ci95": [
+        0.0103,
+        0.3278
+       ]
+      },
+      "mean_task_s": {
+       "mean": 253.568,
+       "ci95": [
+        181.144,
+        303.544
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.284,
+       "ci95": [
+        0.0,
+        0.852
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 3.84,
+       "ci95": [
+        2.5,
+        5.2
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.0888,
+       "ci95": [
+        0.0068,
+        0.2093
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 155.2167,
+       "ci95": [
+        86.39,
+        232.49
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.1029,
+       "ci95": [
+        0.0228,
+        0.185
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.1029,
+       "ci95": [
+        0.0207,
+        0.1804
+       ]
+      },
+      "initial_policies": {
+       "eeg_only|n2|context|explicit": 2,
+       "eeg_only|n2|static|explicit": 1,
+       "eeg_only|n2|static|gated": 1,
+       "eeg_only|n3|context|explicit": 1
+      },
+      "policy_selection_regret": {
+       "mean": 0.0917,
+       "ci95": [
+        0.0134,
+        0.17
+       ],
+       "note": "oracle CMPM minus the CMPM of the initially selected policy run as a fixed policy on the same sessions"
+      },
+      "policy_switches_per_session": 24.2
+     }
+    }
+   },
+   {
+    "motion_profile": "high_motion",
+    "snr_level": "medium",
+    "snr_uv": 1.4,
+    "replicates": 5,
+    "conditions": {
+     "M1": {
+      "label": "M1: fixed-menu EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.45,
+       "ci95": [
+        0.2616,
+        0.6049
+       ]
+      },
+      "mean_task_s": {
+       "mean": 133.672,
+       "ci95": [
+        99.22,
+        183.916
+       ]
+      },
+      "error_rate": {
+       "mean": 0.1,
+       "ci95": [
+        0.0,
+        0.3
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 6.73,
+       "ci95": [
+        3.09,
+        11.78
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 31.511,
+       "ci95": [
+        23.5262,
+        39.4442
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.3298,
+       "ci95": [
+        0.1884,
+        0.4478
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 69.712,
+       "ci95": [
+        53.478,
+        88.17
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.0874,
+       "ci95": [
+        -0.1972,
+        0.3719
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.0874,
+       "ci95": [
+        -0.1972,
+        0.3719
+       ]
+      }
+     },
+     "M2": {
+      "label": "M2: context-aware EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.5002,
+       "ci95": [
+        0.3075,
+        0.7709
+       ]
+      },
+      "mean_task_s": {
+       "mean": 119.662,
+       "ci95": [
+        85.216,
+        152.302
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0973,
+       "ci95": [
+        0.0,
+        0.2286
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 6.18,
+       "ci95": [
+        2.67,
+        9.24
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 51.3878,
+       "ci95": [
+        27.6428,
+        75.5128
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.3665,
+       "ci95": [
+        0.2254,
+        0.5649
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 49.416,
+       "ci95": [
+        33.894,
+        71.554
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.0372,
+       "ci95": [
+        -0.1223,
+        0.1945
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.0372,
+       "ci95": [
+        -0.1201,
+        0.1936
+       ]
+      }
+     },
+     "M3": {
+      "label": "M3: adaptive EEG-only (NeuroSteno)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.462,
+       "ci95": [
+        0.263,
+        0.6312
+       ]
+      },
+      "mean_task_s": {
+       "mean": 144.074,
+       "ci95": [
+        98.464,
+        193.51
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 2.32,
+       "ci95": [
+        1.01,
+        3.74
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.3385,
+       "ci95": [
+        0.2123,
+        0.4647
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 79.28,
+       "ci95": [
+        58.556,
+        108.944
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.0754,
+       "ci95": [
+        -0.0359,
+        0.1949
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.0754,
+       "ci95": [
+        -0.0372,
+        0.188
+       ]
+      }
+     },
+     "M4": {
+      "label": "M4: hybrid EEG selection + IMU confirmation (always on)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.3575,
+       "ci95": [
+        0.1873,
+        0.5278
+       ]
+      },
+      "mean_task_s": {
+       "mean": 170.378,
+       "ci95": [
+        115.762,
+        224.994
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 14.31,
+       "ci95": [
+        8.676,
+        22.73
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 2.9,
+       "ci95": [
+        1.93,
+        4.05
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.2366,
+       "ci95": [
+        0.1239,
+        0.3479
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 98.508,
+       "ci95": [
+        64.542,
+        138.546
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.1799,
+       "ci95": [
+        0.0772,
+        0.283
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.1799,
+       "ci95": [
+        0.0772,
+        0.283
+       ]
+      }
+     },
+     "M5": {
+      "label": "M5: optimised multimodal policy",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.4218,
+       "ci95": [
+        0.2506,
+        0.5682
+       ]
+      },
+      "mean_task_s": {
+       "mean": 149.206,
+       "ci95": [
+        108.106,
+        211.152
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 2.97,
+       "ci95": [
+        1.17,
+        4.74
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.2791,
+       "ci95": [
+        0.1695,
+        0.376
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 105.384,
+       "ci95": [
+        65.604,
+        163.226
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.1156,
+       "ci95": [
+        -0.0176,
+        0.2255
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.1156,
+       "ci95": [
+        -0.0235,
+        0.2255
+       ]
+      },
+      "initial_policies": {
+       "eeg_only|n2|context|explicit": 2,
+       "eeg_only|n2|static|explicit": 2,
+       "hybrid|n3|context|explicit": 1
+      },
+      "policy_selection_regret": {
+       "mean": 0.1778,
+       "ci95": [
+        -0.0362,
+        0.4845
+       ],
+       "note": "oracle CMPM minus the CMPM of the initially selected policy run as a fixed policy on the same sessions"
+      },
+      "policy_switches_per_session": 6.2
+     }
+    }
+   },
+   {
+    "motion_profile": "high_motion",
+    "snr_level": "high",
+    "snr_uv": 2.0,
+    "replicates": 5,
+    "conditions": {
+     "M1": {
+      "label": "M1: fixed-menu EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.0236,
+       "ci95": [
+        0.9333,
+        1.1295
+       ]
+      },
+      "mean_task_s": {
+       "mean": 59.288,
+       "ci95": [
+        53.734,
+        64.346
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0095,
+       "ci95": [
+        0.0,
+        0.0286
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.89,
+       "ci95": [
+        0.4,
+        1.39
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 31.4018,
+       "ci95": [
+        19.6564,
+        46.9866
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.7501,
+       "ci95": [
+        0.6839,
+        0.8284
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 50.456,
+       "ci95": [
+        44.104,
+        56.438
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.0178,
+       "ci95": [
+        -0.1888,
+        0.1982
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.0178,
+       "ci95": [
+        -0.1888,
+        0.1982
+       ]
+      }
+     },
+     "M2": {
+      "label": "M2: context-aware EEG-only",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 1.1499,
+       "ci95": [
+        0.9079,
+        1.4466
+       ]
+      },
+      "mean_task_s": {
+       "mean": 53.638,
+       "ci95": [
+        42.9678,
+        63.58
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 1.47,
+       "ci95": [
+        0.6093,
+        2.36
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 99.0356,
+       "ci95": [
+        51.7922,
+        146.2286
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.8426,
+       "ci95": [
+        0.6657,
+        1.0402
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 22.576,
+       "ci95": [
+        21.816,
+        23.612
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": -0.1084,
+       "ci95": [
+        -0.3431,
+        0.1132
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": -0.1084,
+       "ci95": [
+        -0.3431,
+        0.1262
+       ]
+      }
+     },
+     "M3": {
+      "label": "M3: adaptive EEG-only (NeuroSteno)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.8445,
+       "ci95": [
+        0.7368,
+        0.9806
+       ]
+      },
+      "mean_task_s": {
+       "mean": 72.772,
+       "ci95": [
+        62.588,
+        82.446
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.57,
+       "ci95": [
+        0.01,
+        1.38
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 481.0,
+       "ci95": [
+        481.0,
+        481.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.6188,
+       "ci95": [
+        0.5399,
+        0.7207
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 41.104,
+       "ci95": [
+        36.9843,
+        45.172
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.1969,
+       "ci95": [
+        0.0762,
+        0.2872
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.1969,
+       "ci95": [
+        0.0762,
+        0.2962
+       ]
+      }
+     },
+     "M4": {
+      "label": "M4: hybrid EEG selection + IMU confirmation (always on)",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.6319,
+       "ci95": [
+        0.4778,
+        0.8486
+       ]
+      },
+      "mean_task_s": {
+       "mean": 104.436,
+       "ci95": [
+        78.4,
+        126.484
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 19.432,
+       "ci95": [
+        11.578,
+        30.772
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 1.31,
+       "ci95": [
+        0.71,
+        1.96
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.4181,
+       "ci95": [
+        0.3206,
+        0.5659
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 54.51,
+       "ci95": [
+        46.318,
+        63.26
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.4095,
+       "ci95": [
+        0.2821,
+        0.5368
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.4095,
+       "ci95": [
+        0.2821,
+        0.5368
+       ]
+      }
+     },
+     "M5": {
+      "label": "M5: optimised multimodal policy",
+      "replicates": 5,
+      "cmpm": {
+       "mean": 0.8101,
+       "ci95": [
+        0.6985,
+        0.9671
+       ]
+      },
+      "mean_task_s": {
+       "mean": 76.47,
+       "ci95": [
+        64.412,
+        85.818
+       ]
+      },
+      "error_rate": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "accidental_activations_per_hour": {
+       "mean": 0.568,
+       "ci95": [
+        0.0,
+        1.704
+       ]
+      },
+      "corrections_per_message": {
+       "mean": 0.69,
+       "ci95": [
+        0.0998,
+        1.64
+       ]
+      },
+      "idle_false_sent_per_hour": {
+       "mean": 0.0,
+       "ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      "calibration_overhead_s": {
+       "mean": 609.0,
+       "ci95": [
+        609.0,
+        609.0
+       ]
+      },
+      "cmpm_30min_incl_calibration": {
+       "mean": 0.536,
+       "ci95": [
+        0.4641,
+        0.6359
+       ]
+      },
+      "urgent_mean_s": {
+       "mean": 51.972,
+       "ci95": [
+        42.878,
+        61.21
+       ]
+      },
+      "regret_vs_oracle": {
+       "mean": 0.2314,
+       "ci95": [
+        0.1527,
+        0.3048
+       ]
+      },
+      "regret_vs_constrained_oracle": {
+       "mean": 0.2314,
+       "ci95": [
+        0.1527,
+        0.3127
+       ]
+      },
+      "initial_policies": {
+       "eeg_only|n2|context|explicit": 1,
+       "eeg_only|n2|static|explicit": 2,
+       "eeg_only|n3|context|explicit": 2
+      },
+      "policy_selection_regret": {
+       "mean": 0.3321,
+       "ci95": [
+        0.1118,
+        0.5999
+       ],
+       "note": "oracle CMPM minus the CMPM of the initially selected policy run as a fixed policy on the same sessions"
+      },
+      "policy_switches_per_session": 1.8
+     }
+    }
+   }
+  ],
+  "hybrid_verdicts": [
+   {
+    "motion_profile": "no_head_control",
+    "snr_level": "low",
+    "always_on_hybrid_vs_adaptive_eeg": "worse",
+    "always_on_hybrid_ratio": 0.743,
+    "optimised_vs_adaptive_eeg": "no significant difference",
+    "optimised_ratio": 1.107,
+    "best_fixed_multimodal_vs_best_fixed_eeg": "no significant difference",
+    "best_fixed_ratio": 0.993,
+    "best_fixed_multimodal": "hybrid|n2|context|gated",
+    "best_fixed_eeg_only": "eeg_only|n2|context|gated"
+   },
+   {
+    "motion_profile": "no_head_control",
+    "snr_level": "medium",
+    "always_on_hybrid_vs_adaptive_eeg": "worse",
+    "always_on_hybrid_ratio": 0.743,
+    "optimised_vs_adaptive_eeg": "no significant difference",
+    "optimised_ratio": 0.929,
+    "best_fixed_multimodal_vs_best_fixed_eeg": "no significant difference",
+    "best_fixed_ratio": 0.966,
+    "best_fixed_multimodal": "motion_assisted|n5|context|gated",
+    "best_fixed_eeg_only": "eeg_only|n5|context|gated"
+   },
+   {
+    "motion_profile": "no_head_control",
+    "snr_level": "high",
+    "always_on_hybrid_vs_adaptive_eeg": "worse",
+    "always_on_hybrid_ratio": 0.659,
+    "optimised_vs_adaptive_eeg": "worse",
+    "optimised_ratio": 0.809,
+    "best_fixed_multimodal_vs_best_fixed_eeg": "worse",
+    "best_fixed_ratio": 0.949,
+    "best_fixed_multimodal": "hybrid|n5|context|gated",
+    "best_fixed_eeg_only": "eeg_only|n5|context|gated"
+   },
+   {
+    "motion_profile": "accurate",
+    "snr_level": "low",
+    "always_on_hybrid_vs_adaptive_eeg": "better",
+    "always_on_hybrid_ratio": 1.838,
+    "optimised_vs_adaptive_eeg": "no significant difference",
+    "optimised_ratio": 1.011,
+    "best_fixed_multimodal_vs_best_fixed_eeg": "no significant difference",
+    "best_fixed_ratio": 1.104,
+    "best_fixed_multimodal": "hybrid|n2|context|gated",
+    "best_fixed_eeg_only": "eeg_only|n2|context|gated"
+   },
+   {
+    "motion_profile": "accurate",
+    "snr_level": "medium",
+    "always_on_hybrid_vs_adaptive_eeg": "no significant difference",
+    "always_on_hybrid_ratio": 1.123,
+    "optimised_vs_adaptive_eeg": "no significant difference",
+    "optimised_ratio": 0.864,
+    "best_fixed_multimodal_vs_best_fixed_eeg": "no significant difference",
+    "best_fixed_ratio": 1.083,
+    "best_fixed_multimodal": "motion_assisted|n5|context|gated",
+    "best_fixed_eeg_only": "eeg_only|n5|context|gated"
+   },
+   {
+    "motion_profile": "accurate",
+    "snr_level": "high",
+    "always_on_hybrid_vs_adaptive_eeg": "no significant difference",
+    "always_on_hybrid_ratio": 1.028,
+    "optimised_vs_adaptive_eeg": "worse",
+    "optimised_ratio": 0.841,
+    "best_fixed_multimodal_vs_best_fixed_eeg": "no significant difference",
+    "best_fixed_ratio": 1.025,
+    "best_fixed_multimodal": "hybrid|n5|context|gated",
+    "best_fixed_eeg_only": "eeg_only|n5|context|gated"
+   },
+   {
+    "motion_profile": "unreliable",
+    "snr_level": "low",
+    "always_on_hybrid_vs_adaptive_eeg": "no significant difference",
+    "always_on_hybrid_ratio": 1.085,
+    "optimised_vs_adaptive_eeg": "no significant difference",
+    "optimised_ratio": 1.081,
+    "best_fixed_multimodal_vs_best_fixed_eeg": "no significant difference",
+    "best_fixed_ratio": 0.916,
+    "best_fixed_multimodal": "hybrid|n2|context|gated",
+    "best_fixed_eeg_only": "eeg_only|n2|context|gated"
+   },
+   {
+    "motion_profile": "unreliable",
+    "snr_level": "medium",
+    "always_on_hybrid_vs_adaptive_eeg": "no significant difference",
+    "always_on_hybrid_ratio": 0.927,
+    "optimised_vs_adaptive_eeg": "no significant difference",
+    "optimised_ratio": 0.856,
+    "best_fixed_multimodal_vs_best_fixed_eeg": "no significant difference",
+    "best_fixed_ratio": 0.986,
+    "best_fixed_multimodal": "motion_assisted|n5|context|gated",
+    "best_fixed_eeg_only": "eeg_only|n5|context|gated"
+   },
+   {
+    "motion_profile": "unreliable",
+    "snr_level": "high",
+    "always_on_hybrid_vs_adaptive_eeg": "worse",
+    "always_on_hybrid_ratio": 0.76,
+    "optimised_vs_adaptive_eeg": "worse",
+    "optimised_ratio": 0.812,
+    "best_fixed_multimodal_vs_best_fixed_eeg": "worse",
+    "best_fixed_ratio": 0.962,
+    "best_fixed_multimodal": "hybrid|n5|context|gated",
+    "best_fixed_eeg_only": "eeg_only|n5|context|gated"
+   },
+   {
+    "motion_profile": "high_motion",
+    "snr_level": "low",
+    "always_on_hybrid_vs_adaptive_eeg": "no significant difference",
+    "always_on_hybrid_ratio": 1.276,
+    "optimised_vs_adaptive_eeg": "worse",
+    "optimised_ratio": 0.967,
+    "best_fixed_multimodal_vs_best_fixed_eeg": "no significant difference",
+    "best_fixed_ratio": 0.981,
+    "best_fixed_multimodal": "hybrid|n2|context|gated",
+    "best_fixed_eeg_only": "eeg_only|n2|context|gated"
+   },
+   {
+    "motion_profile": "high_motion",
+    "snr_level": "medium",
+    "always_on_hybrid_vs_adaptive_eeg": "worse",
+    "always_on_hybrid_ratio": 0.774,
+    "optimised_vs_adaptive_eeg": "no significant difference",
+    "optimised_ratio": 0.913,
+    "best_fixed_multimodal_vs_best_fixed_eeg": "no significant difference",
+    "best_fixed_ratio": 0.969,
+    "best_fixed_multimodal": "hybrid|n2|context|gated",
+    "best_fixed_eeg_only": "eeg_only|n2|context|gated"
+   },
+   {
+    "motion_profile": "high_motion",
+    "snr_level": "high",
+    "always_on_hybrid_vs_adaptive_eeg": "worse",
+    "always_on_hybrid_ratio": 0.748,
+    "optimised_vs_adaptive_eeg": "worse",
+    "optimised_ratio": 0.959,
+    "best_fixed_multimodal_vs_best_fixed_eeg": "worse",
+    "best_fixed_ratio": 0.825,
+    "best_fixed_multimodal": "motion_assisted|n2|context|gated",
+    "best_fixed_eeg_only": "eeg_only|n2|context|gated"
+   }
+  ]
+ },
+ "limitations": [
+  "SIMULATION ONLY. EEG and head motion are synthetic; gesture amplitudes, timings, failure rates and incidental movement are modelling assumptions (acquisition/motion_sim.py), not patient data. Only the stationary IMU noise floor comes from a real (not worn) Unicorn recording.",
+  "The simulated patient always intends the right answer; all errors come from the decoders (real FBCCA and real gesture-detector code on synthetic signals, held-out trials).",
+  "Gesture outcomes are drawn from a finite held-out pool per profile and replicate; false activations are Poisson at the rate measured on 15 min of held-out synthetic natural movement.",
+  "Head-motion EEG artifacts are modelled only for the high_motion profile.",
+  "M4 runs hybrid even where the calibration marks gestures unusable (the engine would refuse). It shows what ASSUMING hybrid is better costs; it is not a recommended configuration.",
+  "The oracle is chosen in hindsight on the same test sessions; regret against it is a best-case bound, not an achievable target.",
+  "Calibration overhead is protocol time only (EEG 2/3/5-target calibrations; gesture protocol), amortised over an assumed 30-minute session.",
+  "The policy model (policy.py) is evaluated here against Monte-Carlo simulation of the same simulator; agreement says nothing about real patients.",
+  "No clinical validation. No real patient data. Real-EEG / real-IMU capability estimates require the headset."
+ ]
+}

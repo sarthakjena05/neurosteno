@@ -1,0 +1,1395 @@
+{
+ "_source": "live GET /api/state from feature/eeg-backend@d47e1e6 (contract v1.4), simulated, trimmed to multimodal keys",
+ "idle": {
+  "version": 15,
+  "mode": {
+   "kind": "simulated",
+   "label": "SIMULATED EEG",
+   "origin": "simulated",
+   "is_real_eeg": false,
+   "replay_of": null,
+   "calibrated": false,
+   "calibration_required": false
+  },
+  "phase": "EVIDENCE_COLLECTION",
+  "input": {
+   "mode": "eeg_only",
+   "requested": "eeg_only",
+   "modes_available": [
+    "eeg_only"
+   ],
+   "mode_reason": "EEG-only selected (default; no head movement needed)",
+   "methods": {
+    "eeg_ssvep": {
+     "status": "not_calibrated",
+     "enabled": true,
+     "reason": "default thresholds (no SSVEP calibration on this origin)",
+     "calibration": null
+    },
+    "nod_yes": {
+     "status": "unreliable",
+     "enabled": false,
+     "reason": "not reliably detected in calibration",
+     "calibration": {
+      "origin": "simulated",
+      "claim": "simulated",
+      "attempts": 3,
+      "detected": 0,
+      "rest_s": 50.0,
+      "rest_false_triggers": 0,
+      "false_per_hour_upper95": 215.7,
+      "median_latency_s": null,
+      "confidence": 0.0,
+      "verdict": "fail",
+      "at": 1794085236.234875
+     }
+    },
+    "shake_no": {
+     "status": "unreliable",
+     "enabled": false,
+     "reason": "not reliably detected in calibration",
+     "calibration": {
+      "origin": "simulated",
+      "claim": "simulated",
+      "attempts": 3,
+      "detected": 0,
+      "rest_s": 50.0,
+      "rest_false_triggers": 0,
+      "false_per_hour_upper95": 215.7,
+      "median_latency_s": null,
+      "confidence": 0.0,
+      "verdict": "fail",
+      "at": 1794085236.234875
+     }
+    },
+    "tilt_nav": {
+     "status": "unreliable",
+     "enabled": false,
+     "reason": "not reliably detected in calibration",
+     "calibration": {
+      "origin": "simulated",
+      "claim": "simulated",
+      "attempts": 3,
+      "detected": 0,
+      "rest_s": 50.0,
+      "rest_false_triggers": 0,
+      "false_per_hour_upper95": 215.7,
+      "median_latency_s": null,
+      "confidence": 0.0,
+      "verdict": "fail",
+      "at": 1794085236.234875
+     }
+    }
+   },
+   "imu": {
+    "present": true,
+    "streaming": true,
+    "origin": "simulated",
+    "claim": "simulated",
+    "moving": false,
+    "motion_level": 0.04,
+    "eeg_contaminated": false,
+    "seconds_since_last_sample": null,
+    "reason": ""
+   },
+   "last_gesture": null,
+   "gesture_calibration": null
+  },
+  "policy": {
+   "action": "choose",
+   "selected": "eeg_ssvep",
+   "options": [
+    {
+     "method": "eeg_ssvep",
+     "allowed": true,
+     "expected_latency_s": null,
+     "confidence": null,
+     "reason": "always available"
+    },
+    {
+     "method": "nod_yes",
+     "allowed": false,
+     "expected_latency_s": null,
+     "confidence": 0.0,
+     "reason": "not used for this action",
+     "window_s": null
+    },
+    {
+     "method": "shake_no",
+     "allowed": false,
+     "expected_latency_s": null,
+     "confidence": 0.0,
+     "reason": "not used for this action",
+     "window_s": null
+    },
+    {
+     "method": "tilt_nav",
+     "allowed": false,
+     "expected_latency_s": null,
+     "confidence": 0.0,
+     "reason": "not reliably detected in calibration",
+     "window_s": null
+    }
+   ],
+   "constraints": [
+    "final message: EEG 'Yes, send it' required (gestures never send)",
+    "gestures never trigger urgent messages or emergencies",
+    "conflicting EEG/gesture answers: choice not accepted"
+   ],
+   "source": "assumption",
+   "optimiser": {
+    "chosen": "eeg_only|n5|static|explicit",
+    "reason": "No policy satisfies every safety constraint; using the least-violating EEG-only policy.",
+    "applied": null,
+    "auto": false
+   }
+  },
+  "imu": {
+   "available": true,
+   "reason": "",
+   "origin": "simulated",
+   "claim": "simulated",
+   "sample_rate": 250.0,
+   "units": {
+    "accel": "g",
+    "gyro": "deg/s"
+   },
+   "channels": {
+    "accel": [
+     "Accelerometer X",
+     "Accelerometer Y",
+     "Accelerometer Z"
+    ],
+    "gyro": [
+     "Gyroscope X",
+     "Gyroscope Y",
+     "Gyroscope Z"
+    ]
+   },
+   "timestamping": "device sample clock, shared with EEG (same frame)",
+   "channel_map": null,
+   "latest": {
+    "t": 5.228,
+    "accel_g": [
+     0.974,
+     -0.1782,
+     0.1251
+    ],
+    "gyro_dps": [
+     0.8,
+     1.21,
+     0.68
+    ]
+   },
+   "motion": {
+    "angular_speed_dps": 1.1,
+    "moving": false,
+    "gate_dps": 15.0
+   }
+  },
+  "gestures": {
+   "enabled": false,
+   "calibrated": true,
+   "calibration_origin": "simulated",
+   "ready": true,
+   "usable": {
+    "nod": false,
+    "shake": false,
+    "tilt": false
+   },
+   "active": {
+    "nod": false,
+    "shake": false,
+    "tilt": false
+   },
+   "window": null,
+   "events": [],
+   "live": {
+    "nod": {
+     "hits": 0,
+     "prompts": 0,
+     "unprompted": 0,
+     "unprompted_exposure_s": 4.905999999959022
+    },
+    "shake": {
+     "hits": 0,
+     "prompts": 0,
+     "unprompted": 0,
+     "unprompted_exposure_s": 4.905999999959022
+    },
+    "tilt": {
+     "hits": 0,
+     "prompts": 0,
+     "unprompted": 0,
+     "unprompted_exposure_s": 4.905999999959022
+    }
+   },
+   "counters": {
+    "conflicts": 0,
+    "blocked_final": 0,
+    "eeg_motion_restarts": 0
+   },
+   "mapping": {
+    "nod": "YES (step only)",
+    "shake": "NO (step only)",
+    "tilt": "go back (motion-assisted only)"
+   },
+   "rules": [
+    "Gestures never send a message or confirm the final review",
+    "Gestures never trigger urgent messages or emergencies",
+    "Ignored while communication is paused"
+   ]
+  },
+  "interaction": {
+   "requested": "eeg_only",
+   "effective": "eeg_only",
+   "reason": "EEG-only selected (default; no head movement needed)",
+   "modes": {
+    "eeg_only": true,
+    "hybrid": false,
+    "motion_assisted": false,
+    "why": {
+     "eeg_only": "always available (no motion control required)",
+     "hybrid": "nod and/or shake not reliably detected in calibration",
+     "motion_assisted": "requires hybrid plus a usable sustained tilt"
+    }
+   },
+   "applied_policy": null,
+   "policy": {
+    "chosen": {
+     "key": "eeg_only|n5|static|explicit",
+     "mode": "eeg_only",
+     "n": 5,
+     "routing": "static",
+     "step_confirmation": "explicit",
+     "step_confirm_modality": "EEG YES/NO",
+     "final_confirmation": "EEG YES (always)",
+     "correction": "reject at confirmation + EEG 'Go back'",
+     "cmpm": {
+      "mean": 0.218,
+      "q10": 0.0321,
+      "q90": 0.4228
+     },
+     "time_per_message_s": 295.8,
+     "wrong_per_sent": {
+      "mean": 0.1351,
+      "q90": 0.4264
+     },
+     "idle_false_sends_per_hour": {
+      "mean": 4.113,
+      "q90": 8.627
+     },
+     "final_confirm_accuracy_q10": 0.498,
+     "step_false_confirm": 0.2522,
+     "step_confirm": {
+      "p_yes_if_right": 0.643,
+      "p_yes_if_wrong": 0.2522
+     },
+     "feasible": false,
+     "violations": [
+      "P(wrong message | sent) 0.135 > 0.02",
+      "idle false sends 4.11/h > 1.0/h",
+      "P(step confirmed | wrong highlight) 0.252 > 0.1"
+     ],
+     "score": 0.0321
+    },
+    "reason": "No policy satisfies every safety constraint; using the least-violating EEG-only policy.",
+    "readiness": {
+     "final_confirmation_accuracy_mean": 0.733,
+     "final_confirmation_accuracy_interval_90": [
+      0.4171,
+      0.9566
+     ],
+     "ok": false,
+     "rule": "posterior mean >= 0.9 (EEG YES/NO; identical in every policy)",
+     "warning": "Final YES/NO confirmation reliability is not established on this data origin; recalibrate 2 targets before relying on any policy."
+    },
+    "baseline_eeg_only": null,
+    "top": [
+     {
+      "key": "eeg_only|n5|static|explicit",
+      "mode": "eeg_only",
+      "n": 5,
+      "routing": "static",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.218,
+       "q10": 0.0321,
+       "q90": 0.4228
+      },
+      "score": 0.0321,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.135 > 0.02",
+       "idle false sends 4.11/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.252 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n5|context|explicit",
+      "mode": "eeg_only",
+      "n": 5,
+      "routing": "context",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.209,
+       "q10": 0.0306,
+       "q90": 0.4056
+      },
+      "score": 0.0306,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.135 > 0.02",
+       "idle false sends 3.93/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.252 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n3|context|explicit",
+      "mode": "eeg_only",
+      "n": 3,
+      "routing": "context",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.1453,
+       "q10": 0.0218,
+       "q90": 0.2778
+      },
+      "score": 0.0218,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.124 > 0.02",
+       "idle false sends 2.33/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.252 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n3|static|explicit",
+      "mode": "eeg_only",
+      "n": 3,
+      "routing": "static",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.1451,
+       "q10": 0.0218,
+       "q90": 0.2774
+      },
+      "score": 0.0218,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.124 > 0.02",
+       "idle false sends 2.33/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.252 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n2|static|explicit",
+      "mode": "eeg_only",
+      "n": 2,
+      "routing": "static",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.1466,
+       "q10": 0.005,
+       "q90": 0.3064
+      },
+      "score": 0.005,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.166 > 0.02",
+       "idle false sends 2.29/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.252 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n2|context|explicit",
+      "mode": "eeg_only",
+      "n": 2,
+      "routing": "context",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.1382,
+       "q10": 0.0047,
+       "q90": 0.289
+      },
+      "score": 0.0047,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.166 > 0.02",
+       "idle false sends 2.15/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.252 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     }
+    ],
+    "capability_claim": "simulated",
+    "note": "Model estimate (policy.py); inputs are calibration and live evidence on the 'simulated' data origin. Not a measured throughput."
+   },
+   "computing": false
+  },
+  "safety_invariants": {
+   "messages_sent_without_final_confirmation": 0,
+   "blocked_unconfirmed_send_attempts": 0,
+   "gesture_final_send_blocked": 0
+  },
+  "feedback": null,
+  "attempt": {
+   "kind": "choose",
+   "targets": [
+    {
+     "key": "group:pain|breathing",
+     "label": "Medical",
+     "freq": 7.5
+    },
+    {
+     "key": "group:food-water|comfort|call-caregiver",
+     "label": "Daily needs · People",
+     "freq": 12.0
+    }
+   ],
+   "elapsed_s": 0.19,
+   "max_window_s": 5.0,
+   "min_window_s": 1.5,
+   "calibrated": false,
+   "last": null
+  },
+  "highlight": null,
+  "calibration": null
+ },
+ "highlight": {
+  "version": 18,
+  "mode": {
+   "kind": "simulated",
+   "label": "SIMULATED EEG",
+   "origin": "simulated",
+   "is_real_eeg": false,
+   "replay_of": null,
+   "calibrated": false,
+   "calibration_required": false
+  },
+  "phase": "PREDICTION_HIGHLIGHTED",
+  "input": {
+   "mode": "eeg_only",
+   "requested": "eeg_only",
+   "modes_available": [
+    "eeg_only"
+   ],
+   "mode_reason": "EEG-only selected (default; no head movement needed)",
+   "methods": {
+    "eeg_ssvep": {
+     "status": "not_calibrated",
+     "enabled": true,
+     "reason": "default thresholds (no SSVEP calibration on this origin)",
+     "calibration": null
+    },
+    "nod_yes": {
+     "status": "unreliable",
+     "enabled": false,
+     "reason": "not reliably detected in calibration",
+     "calibration": {
+      "origin": "simulated",
+      "claim": "simulated",
+      "attempts": 3,
+      "detected": 0,
+      "rest_s": 50.0,
+      "rest_false_triggers": 0,
+      "false_per_hour_upper95": 215.7,
+      "median_latency_s": null,
+      "confidence": 0.0,
+      "verdict": "fail",
+      "at": 1794085236.234875
+     }
+    },
+    "shake_no": {
+     "status": "unreliable",
+     "enabled": false,
+     "reason": "not reliably detected in calibration",
+     "calibration": {
+      "origin": "simulated",
+      "claim": "simulated",
+      "attempts": 3,
+      "detected": 0,
+      "rest_s": 50.0,
+      "rest_false_triggers": 0,
+      "false_per_hour_upper95": 215.7,
+      "median_latency_s": null,
+      "confidence": 0.0,
+      "verdict": "fail",
+      "at": 1794085236.234875
+     }
+    },
+    "tilt_nav": {
+     "status": "unreliable",
+     "enabled": false,
+     "reason": "not reliably detected in calibration",
+     "calibration": {
+      "origin": "simulated",
+      "claim": "simulated",
+      "attempts": 3,
+      "detected": 0,
+      "rest_s": 50.0,
+      "rest_false_triggers": 0,
+      "false_per_hour_upper95": 215.7,
+      "median_latency_s": null,
+      "confidence": 0.0,
+      "verdict": "fail",
+      "at": 1794085236.234875
+     }
+    }
+   },
+   "imu": {
+    "present": true,
+    "streaming": true,
+    "origin": "simulated",
+    "claim": "simulated",
+    "moving": false,
+    "motion_level": 0.03,
+    "eeg_contaminated": false,
+    "seconds_since_last_sample": null,
+    "reason": ""
+   },
+   "last_gesture": null,
+   "gesture_calibration": null
+  },
+  "policy": {
+   "action": "confirm",
+   "selected": "eeg_ssvep",
+   "options": [
+    {
+     "method": "eeg_ssvep",
+     "allowed": true,
+     "expected_latency_s": null,
+     "confidence": null,
+     "reason": "always available"
+    },
+    {
+     "method": "nod_yes",
+     "allowed": false,
+     "expected_latency_s": null,
+     "confidence": 0.0,
+     "reason": "not reliably detected in calibration",
+     "window_s": null
+    },
+    {
+     "method": "shake_no",
+     "allowed": false,
+     "expected_latency_s": null,
+     "confidence": 0.0,
+     "reason": "not reliably detected in calibration",
+     "window_s": null
+    },
+    {
+     "method": "tilt_nav",
+     "allowed": false,
+     "expected_latency_s": null,
+     "confidence": 0.0,
+     "reason": "not used for this action",
+     "window_s": null
+    }
+   ],
+   "constraints": [
+    "final message: EEG 'Yes, send it' required (gestures never send)",
+    "gestures never trigger urgent messages or emergencies",
+    "conflicting EEG/gesture answers: choice not accepted"
+   ],
+   "source": "assumption",
+   "optimiser": {
+    "chosen": "eeg_only|n5|static|explicit",
+    "reason": "No policy satisfies every safety constraint; using the least-violating EEG-only policy.",
+    "applied": null,
+    "auto": false
+   }
+  },
+  "imu": {
+   "available": true,
+   "reason": "",
+   "origin": "simulated",
+   "claim": "simulated",
+   "sample_rate": 250.0,
+   "units": {
+    "accel": "g",
+    "gyro": "deg/s"
+   },
+   "channels": {
+    "accel": [
+     "Accelerometer X",
+     "Accelerometer Y",
+     "Accelerometer Z"
+    ],
+    "gyro": [
+     "Gyroscope X",
+     "Gyroscope Y",
+     "Gyroscope Z"
+    ]
+   },
+   "timestamping": "device sample clock, shared with EEG (same frame)",
+   "channel_map": null,
+   "latest": {
+    "t": 7.352,
+    "accel_g": [
+     0.9767,
+     -0.1767,
+     0.1264
+    ],
+    "gyro_dps": [
+     0.25,
+     1.75,
+     0.59
+    ]
+   },
+   "motion": {
+    "angular_speed_dps": 1.0,
+    "moving": false,
+    "gate_dps": 15.0
+   }
+  },
+  "gestures": {
+   "enabled": false,
+   "calibrated": true,
+   "calibration_origin": "simulated",
+   "ready": true,
+   "usable": {
+    "nod": false,
+    "shake": false,
+    "tilt": false
+   },
+   "active": {
+    "nod": false,
+    "shake": false,
+    "tilt": false
+   },
+   "window": null,
+   "events": [],
+   "live": {
+    "nod": {
+     "hits": 0,
+     "prompts": 0,
+     "unprompted": 0,
+     "unprompted_exposure_s": 7.030999999959022
+    },
+    "shake": {
+     "hits": 0,
+     "prompts": 0,
+     "unprompted": 0,
+     "unprompted_exposure_s": 7.030999999959022
+    },
+    "tilt": {
+     "hits": 0,
+     "prompts": 0,
+     "unprompted": 0,
+     "unprompted_exposure_s": 7.030999999959022
+    }
+   },
+   "counters": {
+    "conflicts": 0,
+    "blocked_final": 0,
+    "eeg_motion_restarts": 0
+   },
+   "mapping": {
+    "nod": "YES (step only)",
+    "shake": "NO (step only)",
+    "tilt": "go back (motion-assisted only)"
+   },
+   "rules": [
+    "Gestures never send a message or confirm the final review",
+    "Gestures never trigger urgent messages or emergencies",
+    "Ignored while communication is paused"
+   ]
+  },
+  "interaction": {
+   "requested": "eeg_only",
+   "effective": "eeg_only",
+   "reason": "EEG-only selected (default; no head movement needed)",
+   "modes": {
+    "eeg_only": true,
+    "hybrid": false,
+    "motion_assisted": false,
+    "why": {
+     "eeg_only": "always available (no motion control required)",
+     "hybrid": "nod and/or shake not reliably detected in calibration",
+     "motion_assisted": "requires hybrid plus a usable sustained tilt"
+    }
+   },
+   "applied_policy": null,
+   "policy": {
+    "chosen": {
+     "key": "eeg_only|n5|static|explicit",
+     "mode": "eeg_only",
+     "n": 5,
+     "routing": "static",
+     "step_confirmation": "explicit",
+     "step_confirm_modality": "EEG YES/NO",
+     "final_confirmation": "EEG YES (always)",
+     "correction": "reject at confirmation + EEG 'Go back'",
+     "cmpm": {
+      "mean": 0.218,
+      "q10": 0.0321,
+      "q90": 0.4228
+     },
+     "time_per_message_s": 295.8,
+     "wrong_per_sent": {
+      "mean": 0.1351,
+      "q90": 0.4264
+     },
+     "idle_false_sends_per_hour": {
+      "mean": 4.113,
+      "q90": 8.627
+     },
+     "final_confirm_accuracy_q10": 0.498,
+     "step_false_confirm": 0.2522,
+     "step_confirm": {
+      "p_yes_if_right": 0.643,
+      "p_yes_if_wrong": 0.2522
+     },
+     "feasible": false,
+     "violations": [
+      "P(wrong message | sent) 0.135 > 0.02",
+      "idle false sends 4.11/h > 1.0/h",
+      "P(step confirmed | wrong highlight) 0.252 > 0.1"
+     ],
+     "score": 0.0321
+    },
+    "reason": "No policy satisfies every safety constraint; using the least-violating EEG-only policy.",
+    "readiness": {
+     "final_confirmation_accuracy_mean": 0.733,
+     "final_confirmation_accuracy_interval_90": [
+      0.4171,
+      0.9566
+     ],
+     "ok": false,
+     "rule": "posterior mean >= 0.9 (EEG YES/NO; identical in every policy)",
+     "warning": "Final YES/NO confirmation reliability is not established on this data origin; recalibrate 2 targets before relying on any policy."
+    },
+    "baseline_eeg_only": null,
+    "top": [
+     {
+      "key": "eeg_only|n5|static|explicit",
+      "mode": "eeg_only",
+      "n": 5,
+      "routing": "static",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.218,
+       "q10": 0.0321,
+       "q90": 0.4228
+      },
+      "score": 0.0321,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.135 > 0.02",
+       "idle false sends 4.11/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.252 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n5|context|explicit",
+      "mode": "eeg_only",
+      "n": 5,
+      "routing": "context",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.209,
+       "q10": 0.0306,
+       "q90": 0.4056
+      },
+      "score": 0.0306,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.135 > 0.02",
+       "idle false sends 3.93/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.252 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n3|context|explicit",
+      "mode": "eeg_only",
+      "n": 3,
+      "routing": "context",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.1453,
+       "q10": 0.0218,
+       "q90": 0.2778
+      },
+      "score": 0.0218,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.124 > 0.02",
+       "idle false sends 2.33/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.252 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n3|static|explicit",
+      "mode": "eeg_only",
+      "n": 3,
+      "routing": "static",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.1451,
+       "q10": 0.0218,
+       "q90": 0.2774
+      },
+      "score": 0.0218,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.124 > 0.02",
+       "idle false sends 2.33/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.252 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n2|static|explicit",
+      "mode": "eeg_only",
+      "n": 2,
+      "routing": "static",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.1466,
+       "q10": 0.005,
+       "q90": 0.3064
+      },
+      "score": 0.005,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.166 > 0.02",
+       "idle false sends 2.29/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.252 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n2|context|explicit",
+      "mode": "eeg_only",
+      "n": 2,
+      "routing": "context",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.1382,
+       "q10": 0.0047,
+       "q90": 0.289
+      },
+      "score": 0.0047,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.166 > 0.02",
+       "idle false sends 2.15/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.252 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     }
+    ],
+    "capability_claim": "simulated",
+    "note": "Model estimate (policy.py); inputs are calibration and live evidence on the 'simulated' data origin. Not a measured throughput."
+   },
+   "computing": false
+  },
+  "safety_invariants": {
+   "messages_sent_without_final_confirmation": 0,
+   "blocked_unconfirmed_send_attempts": 0,
+   "gesture_final_send_blocked": 0
+  },
+  "feedback": null,
+  "attempt": {
+   "kind": "confirm",
+   "targets": [
+    {
+     "key": "yes",
+     "label": "Yes",
+     "freq": 7.5
+    },
+    {
+     "key": "no",
+     "label": "No, not this",
+     "freq": 12.0
+    }
+   ],
+   "elapsed_s": 0.2,
+   "max_window_s": 5.0,
+   "min_window_s": 1.5,
+   "calibrated": false,
+   "last": null
+  },
+  "highlight": {
+   "slot_index": 1,
+   "key": "group:food-water|comfort|call-caregiver",
+   "label": "Daily needs · People",
+   "margin": 0.561,
+   "window_s": 2.0,
+   "provisional": false,
+   "decision_time_s": 2.16,
+   "provisional_remaining_s": null
+  },
+  "calibration": null
+ },
+ "review": {
+  "version": 92,
+  "mode": {
+   "kind": "simulated",
+   "label": "SIMULATED EEG",
+   "origin": "simulated",
+   "is_real_eeg": false,
+   "replay_of": null,
+   "calibrated": false,
+   "calibration_required": false
+  },
+  "phase": "MESSAGE_REVIEW",
+  "input": {
+   "mode": "eeg_only",
+   "requested": "eeg_only",
+   "modes_available": [
+    "eeg_only"
+   ],
+   "mode_reason": "EEG-only selected (default; no head movement needed)",
+   "methods": {
+    "eeg_ssvep": {
+     "status": "not_calibrated",
+     "enabled": true,
+     "reason": "default thresholds (no SSVEP calibration on this origin)",
+     "calibration": null
+    },
+    "nod_yes": {
+     "status": "unreliable",
+     "enabled": false,
+     "reason": "not reliably detected in calibration",
+     "calibration": {
+      "origin": "simulated",
+      "claim": "simulated",
+      "attempts": 3,
+      "detected": 0,
+      "rest_s": 50.0,
+      "rest_false_triggers": 0,
+      "false_per_hour_upper95": 215.7,
+      "median_latency_s": null,
+      "confidence": 0.0,
+      "verdict": "fail",
+      "at": 1794085236.234875
+     }
+    },
+    "shake_no": {
+     "status": "unreliable",
+     "enabled": false,
+     "reason": "not reliably detected in calibration",
+     "calibration": {
+      "origin": "simulated",
+      "claim": "simulated",
+      "attempts": 3,
+      "detected": 0,
+      "rest_s": 50.0,
+      "rest_false_triggers": 0,
+      "false_per_hour_upper95": 215.7,
+      "median_latency_s": null,
+      "confidence": 0.0,
+      "verdict": "fail",
+      "at": 1794085236.234875
+     }
+    },
+    "tilt_nav": {
+     "status": "unreliable",
+     "enabled": false,
+     "reason": "not reliably detected in calibration",
+     "calibration": {
+      "origin": "simulated",
+      "claim": "simulated",
+      "attempts": 3,
+      "detected": 0,
+      "rest_s": 50.0,
+      "rest_false_triggers": 0,
+      "false_per_hour_upper95": 215.7,
+      "median_latency_s": null,
+      "confidence": 0.0,
+      "verdict": "fail",
+      "at": 1794085236.234875
+     }
+    }
+   },
+   "imu": {
+    "present": true,
+    "streaming": true,
+    "origin": "simulated",
+    "claim": "simulated",
+    "moving": false,
+    "motion_level": 0.02,
+    "eeg_contaminated": false,
+    "seconds_since_last_sample": null,
+    "reason": ""
+   },
+   "last_gesture": null,
+   "gesture_calibration": null
+  },
+  "policy": {
+   "action": "review",
+   "selected": "eeg_ssvep",
+   "options": [
+    {
+     "method": "eeg_ssvep",
+     "allowed": true,
+     "expected_latency_s": null,
+     "confidence": null,
+     "reason": "always available"
+    },
+    {
+     "method": "nod_yes",
+     "allowed": false,
+     "expected_latency_s": null,
+     "confidence": 0.0,
+     "reason": "not for final SEND",
+     "window_s": null
+    },
+    {
+     "method": "shake_no",
+     "allowed": false,
+     "expected_latency_s": null,
+     "confidence": 0.0,
+     "reason": "not for final SEND",
+     "window_s": null
+    },
+    {
+     "method": "tilt_nav",
+     "allowed": false,
+     "expected_latency_s": null,
+     "confidence": 0.0,
+     "reason": "not for final SEND",
+     "window_s": null
+    }
+   ],
+   "constraints": [
+    "final message: EEG 'Yes, send it' required (gestures never send)",
+    "gestures never trigger urgent messages or emergencies",
+    "conflicting EEG/gesture answers: choice not accepted"
+   ],
+   "source": "assumption",
+   "optimiser": {
+    "chosen": "eeg_only|n2|static|explicit",
+    "reason": "No policy satisfies every safety constraint; using the least-violating EEG-only policy.",
+    "applied": null,
+    "auto": false
+   }
+  },
+  "imu": {
+   "available": true,
+   "reason": "",
+   "origin": "simulated",
+   "claim": "simulated",
+   "sample_rate": 250.0,
+   "units": {
+    "accel": "g",
+    "gyro": "deg/s"
+   },
+   "channels": {
+    "accel": [
+     "Accelerometer X",
+     "Accelerometer Y",
+     "Accelerometer Z"
+    ],
+    "gyro": [
+     "Gyroscope X",
+     "Gyroscope Y",
+     "Gyroscope Z"
+    ]
+   },
+   "timestamping": "device sample clock, shared with EEG (same frame)",
+   "channel_map": null,
+   "latest": {
+    "t": 75.9,
+    "accel_g": [
+     0.9776,
+     -0.1769,
+     0.1205
+    ],
+    "gyro_dps": [
+     0.97,
+     0.59,
+     0.39
+    ]
+   },
+   "motion": {
+    "angular_speed_dps": 0.6,
+    "moving": false,
+    "gate_dps": 15.0
+   }
+  },
+  "gestures": {
+   "enabled": false,
+   "calibrated": true,
+   "calibration_origin": "simulated",
+   "ready": true,
+   "usable": {
+    "nod": false,
+    "shake": false,
+    "tilt": false
+   },
+   "active": {
+    "nod": false,
+    "shake": false,
+    "tilt": false
+   },
+   "window": null,
+   "events": [],
+   "live": {
+    "nod": {
+     "hits": 0,
+     "prompts": 0,
+     "unprompted": 0,
+     "unprompted_exposure_s": 75.57799999974668
+    },
+    "shake": {
+     "hits": 0,
+     "prompts": 0,
+     "unprompted": 0,
+     "unprompted_exposure_s": 75.57799999974668
+    },
+    "tilt": {
+     "hits": 0,
+     "prompts": 0,
+     "unprompted": 0,
+     "unprompted_exposure_s": 75.57799999974668
+    }
+   },
+   "counters": {
+    "conflicts": 0,
+    "blocked_final": 0,
+    "eeg_motion_restarts": 0
+   },
+   "mapping": {
+    "nod": "YES (step only)",
+    "shake": "NO (step only)",
+    "tilt": "go back (motion-assisted only)"
+   },
+   "rules": [
+    "Gestures never send a message or confirm the final review",
+    "Gestures never trigger urgent messages or emergencies",
+    "Ignored while communication is paused"
+   ]
+  },
+  "interaction": {
+   "requested": "eeg_only",
+   "effective": "eeg_only",
+   "reason": "EEG-only selected (default; no head movement needed)",
+   "modes": {
+    "eeg_only": true,
+    "hybrid": false,
+    "motion_assisted": false,
+    "why": {
+     "eeg_only": "always available (no motion control required)",
+     "hybrid": "nod and/or shake not reliably detected in calibration",
+     "motion_assisted": "requires hybrid plus a usable sustained tilt"
+    }
+   },
+   "applied_policy": null,
+   "policy": {
+    "chosen": {
+     "key": "eeg_only|n2|static|explicit",
+     "mode": "eeg_only",
+     "n": 2,
+     "routing": "static",
+     "step_confirmation": "explicit",
+     "step_confirm_modality": "EEG YES/NO",
+     "final_confirmation": "EEG YES (always)",
+     "correction": "reject at confirmation + EEG 'Go back'",
+     "cmpm": {
+      "mean": 0.3734,
+      "q10": 0.2242,
+      "q90": 0.4989
+     },
+     "time_per_message_s": 157.1,
+     "wrong_per_sent": {
+      "mean": 0.0117,
+      "q90": 0.034
+     },
+     "idle_false_sends_per_hour": {
+      "mean": 2.511,
+      "q90": 5.729
+     },
+     "final_confirm_accuracy_q10": 0.753,
+     "step_false_confirm": 0.1182,
+     "step_confirm": {
+      "p_yes_if_right": 0.862,
+      "p_yes_if_wrong": 0.1182
+     },
+     "feasible": false,
+     "violations": [
+      "idle false sends 2.51/h > 1.0/h",
+      "P(step confirmed | wrong highlight) 0.118 > 0.1"
+     ],
+     "score": 0.2242
+    },
+    "reason": "No policy satisfies every safety constraint; using the least-violating EEG-only policy.",
+    "readiness": {
+     "final_confirmation_accuracy_mean": 0.886,
+     "final_confirmation_accuracy_interval_90": [
+      0.725,
+      0.9837
+     ],
+     "ok": false,
+     "rule": "posterior mean >= 0.9 (EEG YES/NO; identical in every policy)",
+     "warning": "Final YES/NO confirmation reliability is not established on this data origin; recalibrate 2 targets before relying on any policy."
+    },
+    "baseline_eeg_only": null,
+    "top": [
+     {
+      "key": "eeg_only|n2|static|explicit",
+      "mode": "eeg_only",
+      "n": 2,
+      "routing": "static",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.3734,
+       "q10": 0.2242,
+       "q90": 0.4989
+      },
+      "score": 0.2242,
+      "feasible": false,
+      "violations": [
+       "idle false sends 2.51/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.118 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n2|context|explicit",
+      "mode": "eeg_only",
+      "n": 2,
+      "routing": "context",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.3566,
+       "q10": 0.2139,
+       "q90": 0.4765
+      },
+      "score": 0.2139,
+      "feasible": false,
+      "violations": [
+       "idle false sends 2.39/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.118 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n5|static|explicit",
+      "mode": "eeg_only",
+      "n": 5,
+      "routing": "static",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.3832,
+       "q10": 0.1598,
+       "q90": 0.5951
+      },
+      "score": 0.1598,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.021 > 0.02",
+       "idle false sends 4.32/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.118 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n5|context|explicit",
+      "mode": "eeg_only",
+      "n": 5,
+      "routing": "context",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.3605,
+       "q10": 0.1499,
+       "q90": 0.5605
+      },
+      "score": 0.1499,
+      "feasible": false,
+      "violations": [
+       "P(wrong message | sent) 0.021 > 0.02",
+       "idle false sends 4.05/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.118 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n3|context|explicit",
+      "mode": "eeg_only",
+      "n": 3,
+      "routing": "context",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.258,
+       "q10": 0.1112,
+       "q90": 0.4014
+      },
+      "score": 0.1112,
+      "feasible": false,
+      "violations": [
+       "idle false sends 2.53/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.118 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     },
+     {
+      "key": "eeg_only|n3|static|explicit",
+      "mode": "eeg_only",
+      "n": 3,
+      "routing": "static",
+      "step_confirmation": "explicit",
+      "cmpm": {
+       "mean": 0.2578,
+       "q10": 0.1111,
+       "q90": 0.4011
+      },
+      "score": 0.1111,
+      "feasible": false,
+      "violations": [
+       "idle false sends 2.53/h > 1.0/h",
+       "P(step confirmed | wrong highlight) 0.118 > 0.1"
+      ],
+      "p_better_than_eeg_only": null
+     }
+    ],
+    "capability_claim": "simulated",
+    "note": "Model estimate (policy.py); inputs are calibration and live evidence on the 'simulated' data origin. Not a measured throughput."
+   },
+   "computing": false
+  },
+  "safety_invariants": {
+   "messages_sent_without_final_confirmation": 0,
+   "blocked_unconfirmed_send_attempts": 0,
+   "gesture_final_send_blocked": 0
+  },
+  "feedback": {
+   "type": "accepted",
+   "label": "Turn me to my left",
+   "provisional": false,
+   "gated": false
+  },
+  "attempt": {
+   "kind": "review",
+   "targets": [
+    {
+     "key": "yes",
+     "label": "Yes, send it",
+     "freq": 7.5
+    },
+    {
+     "key": "no",
+     "label": "No, change it",
+     "freq": 12.0
+    }
+   ],
+   "elapsed_s": 0.48,
+   "max_window_s": 5.0,
+   "min_window_s": 1.5,
+   "calibrated": false,
+   "last": null
+  },
+  "highlight": null,
+  "calibration": null
+ }
+}

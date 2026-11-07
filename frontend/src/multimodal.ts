@@ -4,24 +4,41 @@ import type { State } from './types'
 /**
  * Multimodal input (EEG + optional head-movement IMU): view model + adapter.
  *
- * CONTRACT STATUS: the backend fields below are a PROPOSAL (contract v2.0, GitHub issue #1),
- * not yet confirmed or published by Agent A. While MULTIMODAL_CONTRACT === 'proposed' the
- * adapter ignores any `input` / `policy` keys and reports EEG-only, so the live demo cannot
- * show a gesture the backend has not confirmed. Integration = verify against real backend
- * output, adjust names, then flip this to 'confirmed'.
+ * CONTRACT STATUS: confirmed by Agent A as contract v1.4 (issue #1, backend
+ * feature/eeg-backend@331358b / d47e1e6), which publishes the `input` / `policy` shapes
+ * proposed as v2.0. Verified against live responses; fixtures captured in
+ * src/test/fixtures/v14_*.json. Differences from the proposal handled below: mode "auto",
+ * `requested`, `durations.cue` per gesture, `gesture: null` + `step_label` during rest, no
+ * "feedback" calibration sub-phase, no `feedback.type = "motion_artifact"` (motion restarts the
+ * EEG window instead), one global gesture switch.
  *
  * Product rule: NEVER assume a patient can move their head. Gestures are only "active" when
  * the backend says the method is calibrated AND enabled.
  */
-export const MULTIMODAL_CONTRACT: 'proposed' | 'confirmed' = 'proposed'
+export const MULTIMODAL_CONTRACT: 'proposed' | 'confirmed' = 'confirmed'
+
+/**
+ * Controls that START gesture activity (movement check, gesture switch, input-mode change,
+ * simulated gestures) are held in the UI. The state display is live; nothing that creates
+ * gesture events can be triggered from the frontend while this hold is on.
+ */
+export const GESTURE_CONTROLS_HOLD = {
+  held: true,
+  reasons: [
+    'Agent A: keep gesture input off in the demo until the nod-like cough/jerk false-acceptance fix lands.',
+    'Backend v1.4 (d47e1e6): the first gesture event makes the state unserialisable (numpy.int64 in gestures.events[].sample), which stops the live feed. Reported on issue #1.',
+  ],
+} as const
 
 export type MethodKey = 'eeg_ssvep' | 'nod_yes' | 'shake_no' | 'tilt_nav'
 export type MethodStatus = 'available' | 'unavailable' | 'not_calibrated' | 'calibrating' | 'calibrated' | 'unreliable' | 'disabled'
-export type InputMode = 'eeg_only' | 'hybrid' | 'motion_assisted'
+export type InputMode = 'eeg_only' | 'hybrid' | 'motion_assisted' | 'auto'
 
 export interface GestureCalib {
   origin: string; attempts: number; detected: number; rest_s: number; rest_false_triggers: number
   median_latency_s: number | null; confidence: number | null; verdict: 'pass' | 'unreliable' | 'fail'; at?: number
+  /** v1.4 extras */
+  claim?: string; false_per_hour_upper95?: number | null
 }
 export interface MethodState { status: MethodStatus; enabled: boolean; reason: string | null; calibration: GestureCalib | null }
 export interface PolicyOption { method: MethodKey | 'eeg_fallback'; allowed: boolean; expected_latency_s: number | null; confidence: number | null; reason: string }
@@ -29,11 +46,32 @@ export interface PolicyState {
   action: 'choose' | 'confirm' | 'review' | 'navigate'
   selected: MethodKey | 'eeg_fallback'; options: PolicyOption[]; constraints: string[]; source: 'calibrated' | 'assumption'
 }
-export interface ImuState { present: boolean; streaming: boolean; origin: string; moving: boolean; motion_level: number; eeg_contaminated: boolean; seconds_since_last_sample: number | null }
+export interface ImuState {
+  present: boolean; streaming: boolean; origin: string; moving: boolean
+  /** v1.4 may report null (no estimate yet): never shown as 0 */
+  motion_level: number | null
+  eeg_contaminated: boolean; seconds_since_last_sample: number | null
+  claim?: string; reason?: string
+}
 export interface GestureEvent { gesture: string; confidence: number; accepted: boolean; used_for: 'yes' | 'no' | 'nav' | null; reason: string; time: number }
 export interface GestureCalibSession {
-  gesture: string; sub: 'rest' | 'cue' | 'feedback' | 'computing'; trial: number; trials: number; step: number; steps: number
-  elapsed: number; durations: Record<string, number>; last_trial: null | { detected: boolean; seen: string | null; confidence: number | null }
+  /** null during rest phases (v1.4) */
+  gesture: string | null
+  /** v1.4: neutral | natural | nod | shake | tilt */
+  step_label?: string
+  sub: 'rest' | 'cue' | 'feedback' | 'computing'; trial: number; trials: number; step: number; steps: number
+  /** v1.4: {rest, natural, feedback, cue: {nod, shake, tilt}} */
+  elapsed: number; durations: Record<string, number | Record<string, number>>
+  last_trial: null | { detected: boolean; seen: string | null; confidence: number | null }
+}
+
+/** Seconds of the current calibration sub-phase, handling v1.4's per-gesture cue durations. */
+export function calibPhaseSeconds(cal: GestureCalibSession): number | null {
+  const key = cal.sub === 'rest' && cal.step_label === 'natural' ? 'natural' : cal.sub
+  const d = cal.durations?.[key]
+  if (typeof d === 'number') return d
+  if (d && typeof d === 'object' && cal.gesture && typeof d[cal.gesture] === 'number') return d[cal.gesture]
+  return null
 }
 /** Proposed backend shape (contract v2.0, unconfirmed). */
 export interface InputBackend {
@@ -53,6 +91,7 @@ export const MODE_INFO: Record<InputMode, { label: string; text: string }> = {
   eeg_only: { label: 'EEG-only', text: 'Every choice and every YES/NO by brain signal (SSVEP). Works with no movement at all.' },
   hybrid: { label: 'Hybrid EEG + head', text: 'EEG picks the choice; a calibrated nod / shake can answer YES / NO.' },
   motion_assisted: { label: 'Motion-assisted', text: 'Adds calibrated head tilt for navigation. EEG still confirms the final message.' },
+  auto: { label: 'Auto (policy)', text: 'The policy picks the fastest mode that meets every safety constraint; otherwise EEG-only.' },
 }
 export const STATUS_INFO: Record<MethodStatus, { text: string; cls: string; mark: string }> = {
   available: { text: 'available (default thresholds)', cls: 'bg-sky-900', mark: '○' },
@@ -67,7 +106,13 @@ export const STATUS_INFO: Record<MethodStatus, { text: string; cls: string; mark
 export type Provenance = 'backend' | 'eeg_only_default' | 'mock'
 export interface InputsVM {
   provenance: Provenance
-  mode: InputMode; modesAvailable: InputMode[]; modeReason: string
+  /** effective mode in use */
+  mode: InputMode
+  /** what the caregiver asked for (e.g. "auto"); v1.4 `input.requested` */
+  requested: InputMode
+  modesAvailable: InputMode[]; modeReason: string
+  /** v1.4: EEG window restarted because head movement contaminated it (attempt.last.motion_restart) */
+  motionRestart: boolean
   methods: Record<MethodKey, MethodState & { active: boolean }>
   /** accel/gyro channels exist in the data stream (existing contract field); says nothing about the patient */
   sensorInStream: boolean
@@ -104,7 +149,7 @@ function withActive(methods: Partial<Record<MethodKey, MethodState>>, eeg: Metho
 
 /* ---- defensive parsing of the (future) backend payload: unknown or malformed ⇒ the safe value ---- */
 const STATUSES: MethodStatus[] = ['available', 'unavailable', 'not_calibrated', 'calibrating', 'calibrated', 'unreliable', 'disabled']
-const MODES: InputMode[] = ['eeg_only', 'hybrid', 'motion_assisted']
+const MODES: InputMode[] = ['eeg_only', 'hybrid', 'motion_assisted', 'auto']
 const POLICY_METHODS = ['eeg_ssvep', 'nod_yes', 'shake_no', 'tilt_nav', 'eeg_fallback']
 function isObj(v: unknown): v is Record<string, unknown> { return !!v && typeof v === 'object' && !Array.isArray(v) }
 function isMode(v: unknown): v is InputMode { return MODES.includes(v as InputMode) }
@@ -118,8 +163,16 @@ export function sanitizeMethod(v: unknown): MethodState | null {
 export function sanitizeImu(v: unknown): ImuState | null {
   if (!isObj(v)) return null
   return { present: v.present === true, streaming: v.streaming === true, origin: typeof v.origin === 'string' ? v.origin : 'unknown',
-    moving: v.moving === true, motion_level: Math.max(0, Math.min(1, num(v.motion_level) ?? 0)), eeg_contaminated: v.eeg_contaminated === true,
+    moving: v.moving === true, motion_level: num(v.motion_level) == null ? null : Math.max(0, Math.min(1, num(v.motion_level)!)), eeg_contaminated: v.eeg_contaminated === true,
+    claim: typeof v.claim === 'string' ? v.claim : undefined, reason: typeof v.reason === 'string' ? v.reason : undefined,
     seconds_since_last_sample: num(v.seconds_since_last_sample) }
+}
+export function sanitizeCalib(v: unknown): GestureCalibSession | null {
+  if (!isObj(v) || !['rest', 'cue', 'feedback', 'computing'].includes(String(v.sub))) return null
+  return { gesture: typeof v.gesture === 'string' ? v.gesture : null, step_label: typeof v.step_label === 'string' ? v.step_label : undefined,
+    sub: v.sub as GestureCalibSession['sub'], trial: num(v.trial) ?? 0, trials: num(v.trials) ?? 0, step: num(v.step) ?? 0, steps: num(v.steps) ?? 0,
+    elapsed: num(v.elapsed) ?? 0, durations: isObj(v.durations) ? v.durations as GestureCalibSession['durations'] : {},
+    last_trial: isObj(v.last_trial) ? v.last_trial as GestureCalibSession['last_trial'] : null }
 }
 export function sanitizeGesture(v: unknown): GestureEvent | null {
   if (!isObj(v) || typeof v.gesture !== 'string') return null
@@ -148,22 +201,26 @@ export function readInputs(s: State, contract: 'proposed' | 'confirmed' = MULTIM
   const policy = (s as State & { policy?: PolicyState }).policy ?? null
   if (contract === 'confirmed' && isObj(raw) && isObj(raw.methods)) {
     const modesAvailable = Array.from(new Set<InputMode>(['eeg_only', ...(Array.isArray(raw.modes_available) ? raw.modes_available.filter(isMode) : [])]))
-    const mode: InputMode = isMode(raw.mode) && modesAvailable.includes(raw.mode) ? raw.mode : 'eeg_only'
+    const mode: InputMode = isMode(raw.mode) && (raw.mode === 'auto' || modesAvailable.includes(raw.mode)) ? raw.mode : 'eeg_only'
+    const req = (raw as { requested?: unknown }).requested
+    const requested: InputMode = isMode(req) ? req : mode
+    const imu = sanitizeImu(raw.imu)
+    const motionRestart = (s.attempt?.last as { motion_restart?: unknown } | null | undefined)?.motion_restart === true || imu?.eeg_contaminated === true
     const methods: Partial<Record<MethodKey, MethodState>> = {}
     for (const k of ['eeg_ssvep', ...GESTURES] as MethodKey[]) {
       const m = sanitizeMethod((raw.methods as Record<string, unknown>)[k])
       if (m) methods[k] = m
     }
     return {
-      provenance: 'backend', mode, modesAvailable, modeReason: typeof raw.mode_reason === 'string' ? raw.mode_reason : '',
+      provenance: 'backend', mode, requested, motionRestart, modesAvailable, modeReason: typeof raw.mode_reason === 'string' ? raw.mode_reason : '',
       methods: withActive(methods, eegState(s), 'Not reported by the backend'),
-      sensorInStream, imu: sanitizeImu(raw.imu), policy: sanitizePolicy(policy), lastGesture: sanitizeGesture(raw.last_gesture),
-      gestureCal: isObj(raw.gesture_calibration) && typeof (raw.gesture_calibration as GestureCalibSession).sub === 'string' ? raw.gesture_calibration as GestureCalibSession : null,
+      sensorInStream, imu, policy: sanitizePolicy(policy), lastGesture: sanitizeGesture(raw.last_gesture),
+      gestureCal: sanitizeCalib(raw.gesture_calibration),
       abstain: abstainFrom(s),
     }
   }
   return {
-    provenance: 'eeg_only_default', mode: 'eeg_only', modesAvailable: ['eeg_only'],
+    provenance: 'eeg_only_default', mode: 'eeg_only', requested: 'eeg_only', motionRestart: false, modesAvailable: ['eeg_only'],
     modeReason: 'Head-movement input is not published by the backend yet, so NeuroSteno runs EEG-only. Movement is never assumed.',
     methods: withActive({}, eegState(s), 'Not available: the backend does not publish gesture input yet'),
     sensorInStream, imu: null, policy: null, lastGesture: null, gestureCal: null, abstain: abstainFrom(s),
@@ -191,39 +248,77 @@ export function answerMethods(vm: InputsVM, action: 'confirm' | 'review' | 'choo
   return out
 }
 
-/* ---------------- Benchmark: strategies x patient capability (contract v2.0 PROPOSED) ---------------- */
+/* ---------------- Multimodal benchmark (contract v1.4: GET /api/benchmark/multimodal, SIMULATED) ---------------- */
 
+/** The four strategies of the judge comparison, mapped to the backend's conditions (Agent A v1.4). M2 appears in the table only. */
 export const STRATEGIES = [
-  { key: 'fixed_eeg', label: 'Fixed EEG-only', color: 'bg-fixed' },
-  { key: 'adaptive_eeg', label: 'Adaptive EEG-only', color: 'bg-neuro' },
-  { key: 'hybrid', label: 'Hybrid EEG + IMU', color: 'bg-hybrid' },
-  { key: 'optimized', label: 'Optimized multimodal', color: 'bg-optimized' },
+  { key: 'M1', role: 'Fixed EEG-only', color: 'bg-fixed' },
+  { key: 'M3', role: 'Adaptive EEG-only', color: 'bg-neuro' },
+  { key: 'M4', role: 'Hybrid EEG + IMU (always on)', color: 'bg-hybrid' },
+  { key: 'M5', role: 'Optimised multimodal', color: 'bg-optimized' },
 ] as const
 export const CAPABILITIES = [
-  { key: 'no_movement', label: 'No reliable head movement' },
-  { key: 'reliable_movement', label: 'Reliable residual head movement' },
-  { key: 'unreliable_movement', label: 'Unreliable head movement' },
+  { key: 'no_head_control', label: 'No reliable head movement' },
+  { key: 'accurate', label: 'Reliable residual head movement' },
+  { key: 'unreliable', label: 'Unreliable head movement' },
+  { key: 'high_motion', label: 'High incidental head motion' },
 ] as const
+/** Agent A (v1.4): the M1/M2 idle false-send numbers are under investigation; do not present them yet. */
+export const WITHHELD_IDLE = new Set(['M1', 'M2'])
 
-export interface MMBenchRow {
-  capability_profile: string; condition: string; runs: number
-  correct_msgs_per_min: number; ci95?: [number, number]
-  mean_selection_s?: number; corrections?: number; false_activations_per_hour?: number
-  idle_false_sent_per_hour?: number; error_rate?: number; final_sent_without_confirm?: number; origin?: string
+export interface Stat { mean: number; ci95?: [number, number] }
+export interface MMCond {
+  label: string; replicates?: number; cmpm: Stat
+  mean_task_s?: Stat; error_rate?: Stat; accidental_activations_per_hour?: Stat; corrections_per_message?: Stat
+  idle_false_sent_per_hour?: Stat; calibration_overhead_s?: Stat; cmpm_30min_incl_calibration?: Stat
 }
-export interface MMBench { origin: string; real_eeg: boolean; generated_at?: string; note?: string; rows: MMBenchRow[] }
-
-/** Reads multimodal benchmark rows only once the contract is confirmed; otherwise null (UI shows NOT MEASURED). */
-export function readMultimodalBench(bench: unknown, contract: 'proposed' | 'confirmed' = MULTIMODAL_CONTRACT): MMBench | null {
-  if (contract !== 'confirmed' || !bench || typeof bench !== 'object') return null
-  const b = bench as { available?: boolean; data_origin?: string; real_eeg?: boolean; generated_at?: string; multimodal?: { rows?: MMBenchRow[]; note?: string; origin?: string } }
-  const rows = b.multimodal?.rows
-  if (!b.available || !Array.isArray(rows) || rows.length === 0) return null
-  return { origin: b.multimodal?.origin ?? b.data_origin ?? 'simulated', real_eeg: b.real_eeg === true, generated_at: b.generated_at, note: b.multimodal?.note, rows }
+export interface MMCell { motion_profile: string; snr_level: string; snr_uv?: number; replicates?: number; conditions: Record<string, MMCond> }
+export type Verdict = 'better' | 'worse' | 'no significant difference'
+export interface MMVerdict {
+  motion_profile: string; snr_level: string
+  always_on_hybrid_vs_adaptive_eeg: Verdict; always_on_hybrid_ratio: number
+  optimised_vs_adaptive_eeg: Verdict; optimised_ratio: number
+  best_fixed_multimodal_vs_best_fixed_eeg?: Verdict; best_fixed_ratio?: number
+}
+export interface MMBench {
+  origin: string; real_eeg: boolean; real_imu: boolean; generated_at?: string; disclaimer?: string; limitations: string[]
+  conditions: { key: string; label: string }[]; cells: MMCell[]; verdicts: MMVerdict[]
 }
 
-/** Best strategy for one capability profile, by measured correct msgs/min, only among rows with no unconfirmed sends. */
-export function bestFor(rows: MMBenchRow[], capability: string): MMBenchRow | null {
-  const r = rows.filter((x) => x.capability_profile === capability && (x.final_sent_without_confirm ?? 0) === 0)
-  return r.length ? r.reduce((a, b) => (b.correct_msgs_per_min > a.correct_msgs_per_min ? b : a)) : null
+const isStat = (v: unknown): v is Stat => isObj(v) && typeof v.mean === 'number'
+
+/** Reads the separate multimodal report; null unless the contract is confirmed and the report is published. */
+export function readMultimodalBench(raw: unknown, contract: 'proposed' | 'confirmed' = MULTIMODAL_CONTRACT): MMBench | null {
+  if (contract !== 'confirmed' || !isObj(raw) || raw.available !== true || !isObj(raw.summary)) return null
+  const sum = raw.summary as Record<string, unknown>
+  const cells = (Array.isArray(sum.cells) ? sum.cells : []).filter(isObj).flatMap((c): MMCell[] => {
+    if (typeof c.motion_profile !== 'string' || typeof c.snr_level !== 'string' || !isObj(c.conditions)) return []
+    const conditions: Record<string, MMCond> = {}
+    for (const [k, v] of Object.entries(c.conditions)) if (isObj(v) && isStat(v.cmpm)) conditions[k] = v as unknown as MMCond
+    return [{ motion_profile: c.motion_profile, snr_level: c.snr_level, snr_uv: num(c.snr_uv) ?? undefined, replicates: num(c.replicates) ?? undefined, conditions }]
+  })
+  if (!cells.length) return null
+  const VERDICTS = ['better', 'worse', 'no significant difference']
+  const verdicts = (Array.isArray(sum.hybrid_verdicts) ? sum.hybrid_verdicts : []).filter(isObj)
+    .filter((v) => VERDICTS.includes(String(v.always_on_hybrid_vs_adaptive_eeg)) && VERDICTS.includes(String(v.optimised_vs_adaptive_eeg))) as unknown as MMVerdict[]
+  return {
+    origin: typeof raw.data_origin === 'string' ? raw.data_origin : 'simulated', real_eeg: raw.real_eeg === true, real_imu: raw.real_imu === true,
+    generated_at: typeof raw.generated_at === 'string' ? raw.generated_at : undefined, disclaimer: typeof raw.disclaimer === 'string' ? raw.disclaimer : undefined,
+    limitations: Array.isArray(raw.limitations) ? raw.limitations.filter((x): x is string => typeof x === 'string') : [],
+    conditions: (Array.isArray(raw.conditions) ? raw.conditions : []).filter(isObj).map((c) => ({ key: String(c.key), label: String(c.label ?? c.key) })),
+    cells, verdicts,
+  }
+}
+
+export function cellFor(mm: MMBench, profile: string, snr: string): MMCell | undefined {
+  return mm.cells.find((c) => c.motion_profile === profile && c.snr_level === snr)
+}
+export function verdictFor(mm: MMBench, profile: string, snr: string): MMVerdict | undefined {
+  return mm.verdicts.find((v) => v.motion_profile === profile && v.snr_level === snr)
+}
+/** Counts of the always-on-hybrid verdict across all cells (CI-based, from the report). */
+export function hybridVerdictCounts(mm: MMBench | null): Record<Verdict, number> & { total: number } {
+  const out = { better: 0, worse: 0, 'no significant difference': 0, total: 0 }
+  for (const v of mm?.verdicts ?? []) { out[v.always_on_hybrid_vs_adaptive_eeg]++; out.total++ }
+  return out
 }

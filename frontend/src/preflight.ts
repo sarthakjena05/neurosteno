@@ -1,5 +1,5 @@
 import type { EngineConnection } from './api'
-import { MULTIMODAL_CONTRACT } from './multimodal'
+import { GESTURE_CONTROLS_HOLD, readInputs } from './multimodal'
 import type { State } from './types'
 
 /** Live go / no-go checks for the judge demo (pure). Anything the UI cannot verify is 'manual', never ticked automatically. */
@@ -30,8 +30,13 @@ export function preflightChecks(s: State & { _missing?: string[] }, link: Pick<E
     detail: ep.benchmark === null ? 'checking…' : ep.benchmark ? 'published: benchmark tables will show' : 'not published: tables show NOT MEASURED (honest, but less to show)' })
   const busy = [s.emergency && 'HELP NOW active', s.calibration && 'calibration running', s.recording && 'recording', s.sim?.autopilot && 'autopilot running', s.sim?.disconnected && 'simulated dropout ON', (s.sim?.bad_channels?.length ?? 0) > 0 && 'simulated bad electrodes'].filter(Boolean)
   c.push({ id: 'clean', level: busy.length ? 'warn' : 'ok', title: 'Clean starting state', detail: busy.length ? `${busy.join(', ')}: press "Reset demo"` : 'nothing left over from a rehearsal' })
-  c.push({ id: 'gestures', level: MULTIMODAL_CONTRACT === 'proposed' ? 'ok' : 'warn', title: 'Head gestures',
-    detail: MULTIMODAL_CONTRACT === 'proposed' ? 'off (EEG-only): multimodal contract not confirmed yet' : 'contract confirmed: check the Inputs tab; final SEND is EEG-only' })
+  const inp = readInputs(s)
+  const gOn = (['nod_yes', 'shake_no', 'tilt_nav'] as const).filter((k) => inp.methods[k].enabled)
+  const gesturesOff = gOn.length === 0 && inp.mode === 'eeg_only'
+  c.push({ id: 'gestures', level: gesturesOff && GESTURE_CONTROLS_HOLD.held ? 'ok' : 'warn', title: 'Head gestures off for the demo',
+    detail: gesturesOff
+      ? `EEG-only${GESTURE_CONTROLS_HOLD.held ? '; gesture controls held in the UI' : ''}; final SEND is EEG-only`
+      : `input mode ${inp.mode}, enabled: ${gOn.join(', ') || 'none'}: Inputs tab → turn gestures OFF / EEG-only` })
   c.push({ id: 'history', level: historyMoved ? 'ok' : 'manual', title: 'Saved simulated history moved aside (manual)',
     detail: 'The UI cannot see or reset backend/data/runtime/history_*_simulated.json. Move it aside with the backend stopped so the live A/B is not skewed by rehearsals.' })
   return c
