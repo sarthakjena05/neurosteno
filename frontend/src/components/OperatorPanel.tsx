@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { command, get, post } from '../api'
+import { command, type EngineConnection, get, post } from '../api'
 import DemoGuide from './DemoGuide'
 import InputsTab from './Inputs'
+import Preflight from './Preflight'
 import SignalCheck from './SignalCheck'
 import { flicker } from '../flicker'
 import type { State } from '../types'
@@ -378,7 +379,7 @@ function LogTab({ s }: { s: State }) {
   )
 }
 
-export default function OperatorPanel({ s, onOpenCompare }: { s: State; onOpenCompare?: () => void }) {
+export default function OperatorPanel({ s, link, onOpenCompare }: { s: State; link?: Pick<EngineConnection, 'connected' | 'stale' | 'reconnects' | 'badMessages'>; onOpenCompare?: () => void }) {
   const [tab, setTab] = useState<Tab>('Demo')
   const goTab = (t: string) => { if ((TABS as readonly string[]).includes(t)) setTab(t as Tab) }
   // WAI-ARIA tabs pattern: arrow keys / Home / End move between tabs.
@@ -406,7 +407,12 @@ export default function OperatorPanel({ s, onOpenCompare }: { s: State; onOpenCo
         ))}
       </div>
       <div id="optab-panel" role="tabpanel" aria-labelledby={`optab-${tab}`} tabIndex={0} className="flex-1 overflow-y-auto pr-1">
-        {tab === 'Demo' && <DemoGuide s={s} onGoTab={goTab} onOpenCompare={onOpenCompare} />}
+        {tab === 'Demo' && (
+          <div className="flex flex-col gap-3">
+            {link && <Preflight s={s} link={link} />}
+            <DemoGuide s={s} onGoTab={goTab} onOpenCompare={onOpenCompare} />
+          </div>
+        )}
         {tab === 'Session' && <SessionTab s={s} />}
         {tab === 'Inputs' && <InputsTab s={s} />}
         {tab === 'Simulation' && <SimulationTab s={s} />}

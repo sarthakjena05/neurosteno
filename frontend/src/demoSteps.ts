@@ -22,7 +22,7 @@ const sim = (action: string, params: Record<string, unknown> = {}) => () => comm
 export const DEMO_STEPS: DemoStep[] = [
   {
     id: 'novelty', title: 'The idea in 30 seconds', budget_s: 30, openCompare: true,
-    say: ['Open “Fixed menu vs NeuroSteno”. Read the two big numbers: same message, same patient (default: Jordan, “Turn me left”, 2 targets), traditional fixed menu vs NeuroSteno brain selections (EXACT navigator count). Every step is still confirmed.', 'Click patient A: for a new patient the count is unchanged. NeuroSteno does not guess without evidence. Every number is tagged EXACT, ESTIMATE or MEASURED (with its data origin).'],
+    say: ['Open “Fixed menu vs NeuroSteno”. Start with the three tiles at the top: (1) fewer brain selections, EXACT; (2) speed vs safety, not a free win, BENCHMARK · SIMULATED; (3) input fits the patient, EEG-only today. Then read the two big numbers: same message, same patient (default: Jordan, “Turn me left”, 2 targets), traditional fixed menu vs NeuroSteno brain selections (EXACT navigator count). Every step is still confirmed.', 'Click patient A: for a new patient the count is unchanged. NeuroSteno does not guess without evidence. Every number is tagged EXACT, ESTIMATE or MEASURED (with its data origin).'],
     actions: [],
   },
   {

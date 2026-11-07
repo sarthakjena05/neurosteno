@@ -141,3 +141,13 @@ export function conditionLabel(b: Bench | null, key: string): string {
 export function pct(from: number, to: number): number {
   return from > 0 ? Math.round(((to - from) / from) * 100) : 0
 }
+
+/** Pooled benchmark rows for the summary: the fastest fixed menu (hindsight) and the full NeuroSteno variants. Data-driven. */
+export function summaryRows(bench: Bench | null): { fixed: BenchPooled | null; full: BenchPooled[] } {
+  const pooled = bench?.available ? bench.summary?.pooled ?? [] : []
+  const conds = bench?.conditions ?? []
+  const fixedKeys = new Set(conds.filter((c) => c.routing === 'static').map((c) => c.key))
+  const fullKeys = new Set(conds.filter((c) => c.decoder === 'dynamic').map((c) => c.key))
+  const fixed = pooled.filter((p) => fixedKeys.has(p.condition)).reduce<BenchPooled | null>((a, b) => (!a || b.cmpm_mean > a.cmpm_mean ? b : a), null)
+  return { fixed, full: pooled.filter((p) => fullKeys.has(p.condition)) }
+}

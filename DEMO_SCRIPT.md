@@ -1,6 +1,6 @@
 # NeuroSteno: 5-minute judge demo
 
-Setup: `start-backend.ps1` + `start-frontend.ps1`, browser at http://localhost:5173 (fullscreen, F11).
+Setup: follow **OPERATOR_CHECKLIST.md** (launch, Preflight = GO, recovery). Browser at http://localhost:5173 (F11).
 Patient screen on the left, operator panel on the right. The operator panel opens on the **Demo** tab:
 each step below appears there with its talking points, one-click buttons (ordinary API commands)
 and a **5:00 timer** (step budgets add up to 4:30, leaving 30 s spare). Press **Start timer**, then
@@ -18,7 +18,12 @@ confirmation and healthy signals. The Demo tab never presses YES/SEND for the pa
 
 
 0. **The idea in 30 seconds (30 s).** Click **Fixed menu vs NeuroSteno** (top centre, or the Demo tab
-   button). The live patient screen stays on the left. On the right is the same message for the same patient
+   button). The live patient screen stays on the left. **First, the three summary tiles at the top (≈20 s):**
+   (1) *Less effort*: fixed menu → NeuroSteno brain selections for the same message (**EXACT**);
+   (2) *Speed vs safety, not a free win*: the fastest fixed menu (chosen in hindsight) vs full NeuroSteno, in
+   correct messages/min **and** messages sent while the patient attended nothing (**BENCHMARK · SIMULATED**);
+   (3) *Input fits the patient*: EEG-only today, head gestures only after calibration + caregiver switch,
+   hybrid benefit **NOT MEASURED**. Then, below: the same message for the same patient
    (default: Jordan, "Turn me left", 2 targets): **Traditional fixed menu** vs **NeuroSteno**, with two big
    brain-selection counts, one dot per selection, and the difference. Every number carries a tag:
    **EXACT** (navigator count, no EEG), **ESTIMATE** (routing model, with its source), **MEASURED ·

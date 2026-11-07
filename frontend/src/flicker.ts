@@ -32,6 +32,8 @@ export class FlickerEngine {
   private frame = 0
   private last = 0
   enabled = false
+  /** Forced off (e.g. backend connection lost): no stimulation regardless of `enabled`. */
+  suspended = false
   maxOpacity = 0.9
   stats = { frames: 0, meanIntervalMs: 0, missed: 0, refreshHz: 0 }
 
@@ -45,6 +47,11 @@ export class FlickerEngine {
     const e = this.entries.get(id)
     if (e) e.el.style.opacity = '0'
     this.entries.delete(id)
+  }
+
+  setSuspended(on: boolean) {
+    this.suspended = on
+    if (on) this.entries.forEach((e) => (e.el.style.opacity = '0'))
   }
 
   setEnabled(on: boolean) {
@@ -70,7 +77,7 @@ export class FlickerEngine {
       this.last = now
       const t = (now - this.t0) / 1000
       this.frame++
-      if (!this.enabled) return
+      if (!this.enabled || this.suspended) return
       this.entries.forEach(({ el, stim }) => {
         const l = stim.kind === 'ssvep' ? ssvepLuminance(stim.freq, t, stim.phase) : cvepLuminance(stim.code, stim.shift, this.frame)
         el.style.opacity = String(l * this.maxOpacity)

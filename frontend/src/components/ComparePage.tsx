@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { command, get } from '../api'
 import {
-  benchArm, benchFor, conditionLabel, estimatedTime, findRow, measuredFromSession, MESSAGE_LABEL, pct, selections, SNR_ORDER,
+  benchArm, benchFor, conditionLabel, summaryRows, estimatedTime, findRow, measuredFromSession, MESSAGE_LABEL, pct, selections, SNR_ORDER,
   type Arm, type Bench, type BenchRow, type CompareData, type CompareRow, type Measured, type Provenance,
 } from '../compare'
 import { originLabel } from '../mode'
 import type { State } from '../types'
 import { AB_SEED, type ArmResult, conditionsMatch, type LiveAB as LiveABApi, startBlocker } from '../useLiveAB'
-import { readInputs, readMultimodalBench } from '../multimodal'
+import { METHOD_INFO, readInputs, readMultimodalBench } from '../multimodal'
 import { MethodTable, PolicyCard } from './Inputs'
 import MultimodalBench from './MultimodalBench'
 import { ModeBadge } from './PatientView'
@@ -35,7 +35,7 @@ const TAG_HELP: Record<Provenance, string> = {
   EXACT: 'Deterministic count from the real navigator (seed profiles). No EEG involved.',
   ESTIMATE: 'Backend routing model: selections × time per selection, from labelled assumptions. Not a measurement.',
   BENCHMARK: 'Headless benchmark: same profile, message, signal level and seed for every condition, many runs. Simulated EEG.',
-  MEASURED: 'Completed messages in this session. The data origin is always shown.',
+  MEASURED: 'Completed messages saved by the backend on this machine (all sessions since its metrics file was started). The data origin is always shown.',
   DEMO: 'One live run per arm in a fixed order. An illustration, not a controlled experiment.',
   NONE: 'Nothing measured. No value is filled in.',
 }
@@ -127,7 +127,7 @@ function ArmCard({ arm, row, s, live, measured, bench, snr, profileName }: {
             : <><Tag tag="NONE" /><span className="text-muted">no time estimate for {row.n} targets</span></>}
         </p>
         {live && <LiveLine r={live} exact={sel.value} />}
-        {measured.map((m, i) => <MeasuredLine key={i} m={m} scope={`this session, all ${profileName} messages at ${row.n} targets`} />)}
+        {measured.map((m, i) => <MeasuredLine key={i} m={m} scope={`saved runs on this machine, all ${profileName} messages at ${row.n} targets`} />)}
       </div>
     </section>
   )
@@ -463,6 +463,51 @@ function BenchPanel({ bench, scenario, message, n, snr, setSnr }: { bench: Bench
   )
 }
 
+
+/** 20-second judge summary: effort (EXACT), speed vs safety (BENCHMARK), input per patient (state / NOT MEASURED). */
+function JudgeSummary({ s, row, bench }: { s: State; row?: CompareRow; bench: Bench | null }) {
+  const { fixed, full } = summaryRows(bench)
+  const inputs = readInputs(s)
+  const gesturesActive = (['nod_yes', 'shake_no', 'tilt_nav'] as const).filter((k) => inputs.methods[k].active)
+  return (
+    <section aria-label="Summary for judges" data-testid="judge-summary" className="grid gap-3 lg:grid-cols-3">
+      <div className="flex flex-col gap-1 rounded-2xl border-2 border-neuro bg-panel p-3" data-testid="sum-effort">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted">1 · Less effort per message</p>
+        {row ? (
+          <>
+            <p className="flex items-center gap-2 text-4xl font-black tabular-nums"><span aria-hidden className="h-4 w-4 rounded-full bg-fixed" />{row.static} → <span aria-hidden className="h-4 w-4 rounded-full bg-neuro" />{row.adaptive} <span className="text-lg font-bold">brain selections</span></p>
+            <p className="text-sm">Fixed menu → NeuroSteno context routing, same message, same patient. <Tag tag="EXACT" /></p>
+            {row.delta >= 0 && <p className="text-xs text-amber-300">No saving for this patient/message; NeuroSteno does not guess without evidence.</p>}
+          </>
+        ) : <p className="text-sm text-muted">Loading exact counts…</p>}
+      </div>
+      <div className="flex flex-col gap-1 rounded-2xl border-2 border-line bg-panel p-3" data-testid="sum-tradeoff">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted">2 · Speed vs safety: not a free win</p>
+        {fixed && full.length > 0 ? (
+          <>
+            <table className="text-sm tabular-nums">
+              <thead><tr className="text-left text-xs text-muted"><th /><th>correct msgs/min</th><th>sent while idle / h</th></tr></thead>
+              <tbody>
+                <tr><td className="pr-2">Fastest fixed menu*</td><td>{fixed.cmpm_mean.toFixed(2)}</td><td className={fixed.idle_false_sent_per_hour >= 1 ? 'text-red-300' : ''}>{fixed.idle_false_sent_per_hour}</td></tr>
+                {full.map((p) => (
+                  <tr key={p.condition}><td className="pr-2">{conditionLabel(bench, p.condition).replace(/^[A-Z]\+?: /, '')}</td><td>{p.cmpm_mean.toFixed(2)}</td><td className={p.idle_false_sent_per_hour < 1 ? 'text-green-300' : 'text-red-300'}>{p.idle_false_sent_per_hour}</td></tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-xs text-muted">*best fixed menu chosen in hindsight. Simulated EEG, perfect-intent virtual patient. <Tag tag="BENCHMARK" /></p>
+          </>
+        ) : <p className="flex items-center gap-2 text-sm text-muted"><Tag tag="NONE" /> benchmark not published</p>}
+      </div>
+      <div className="flex flex-col gap-1 rounded-2xl border-2 border-line bg-panel p-3" data-testid="sum-inputs">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted">3 · Input fits the patient</p>
+        <p className="text-lg font-black">{gesturesActive.length ? `EEG + ${gesturesActive.map((k) => METHOD_INFO[k].label.toLowerCase()).join(', ')}` : 'Now: EEG-only'}</p>
+        <p className="text-sm">Head movement is never assumed. Gestures are used only after a passing calibration and a caregiver switch; final SEND is always confirmed by EEG.</p>
+        <p className="flex items-center gap-2 text-xs text-muted"><Tag tag="NONE" /> benefit of hybrid input per patient: not measured yet</p>
+      </div>
+    </section>
+  )
+}
+
 function SafetyInvariant({ s }: { s: State }) {
   const inv = s.safety_invariants
   if (!inv) return null
@@ -471,7 +516,7 @@ function SafetyInvariant({ s }: { s: State }) {
     <p className="flex flex-wrap items-center gap-2 text-sm" data-testid="safety-invariant">
       <span>🔒 <b>Enforced by the engine:</b> a message cannot be sent without a decoded final YES (guaranteed by code, not a measurement).</span>
       {blocked != null && (
-        <span className="flex items-center gap-2"><Tag tag="MEASURED" origin={s.mode.origin} /> unconfirmed send attempts blocked this session: <b>{blocked}</b></span>
+        <span className="flex items-center gap-2"><Tag tag="MEASURED" origin={s.mode.origin} /> unconfirmed send attempts blocked since the backend started: <b>{blocked}</b></span>
       )}
     </p>
   )
@@ -501,11 +546,15 @@ export default function ComparePage({ s, ab }: { s: State; ab: LiveABApi }) {
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto rounded-3xl border border-line bg-ink p-4" data-testid="compare-page" aria-label="Fixed menu versus NeuroSteno comparison">
       <header className="flex flex-wrap items-center gap-3">
-        <h2 className="text-3xl font-black md:text-4xl">Same message. Fewer brain selections. Every step still confirmed.</h2>
+        <div className="flex-1">
+          <h2 className="text-3xl font-black md:text-4xl">Fewer brain selections, the right input for each patient.</h2>
+          <p className="text-lg text-muted">NeuroSteno routes by context to cut effort, and is designed to choose input methods from what each patient can reliably do (EEG-only today). Every step is still confirmed.</p>
+        </div>
         <ModeBadge s={s} />
       </header>
+      <JudgeSummary s={s} row={row} bench={bench} />
       <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
-        Numbers are tagged: <Tag tag="EXACT" /> navigator count · <Tag tag="ESTIMATE" /> routing model · <Tag tag="BENCHMARK" /> controlled simulated runs · <Tag tag="DEMO" /> one live run · <Tag tag="MEASURED" origin="simulated" /> this session · <Tag tag="NONE" />. Research prototype; no real-EEG performance is claimed.
+        Numbers are tagged: <Tag tag="EXACT" /> navigator count · <Tag tag="ESTIMATE" /> routing model · <Tag tag="BENCHMARK" /> controlled simulated runs · <Tag tag="DEMO" /> one live run · <Tag tag="MEASURED" origin="simulated" /> saved runs on this machine · <Tag tag="NONE" />. Research prototype; no real-EEG performance is claimed.
       </p>
       {err && <p role="alert" className="rounded bg-red-900 p-2 text-sm">Could not load the comparison: {err}</p>}
 

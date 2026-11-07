@@ -83,9 +83,10 @@ function SlotCard({ s, slot }: { s: State; slot: Slot }) {
       data-testid={`slot-${slot.index}`}
       data-highlighted={hl ? 'true' : 'false'}
       className={[
-        'relative flex min-h-48 flex-col overflow-hidden rounded-3xl border-4 p-5 text-left transition-all',
+        'relative flex min-h-48 flex-col overflow-hidden rounded-3xl border-4 p-5 text-left',
         slot.is_back ? 'border-line bg-panel2' : 'border-line bg-panel',
-        hl && !accepted ? 'border-pending highlight-ring scale-[1.02]' : '',
+        // static emphasis only: no pulsing / scaling / transitions near SSVEP targets
+        hl && !accepted ? 'predicted-target border-pending' : '',
         accepted ? 'border-accept bg-green-950' : '',
         dimmed ? 'opacity-35' : '',
         isSim ? 'cursor-pointer hover:border-sky-400' : 'cursor-default',
@@ -178,7 +179,7 @@ function Evidence({ s }: { s: State }) {
       <div className="h-3 flex-1 overflow-hidden rounded-full bg-panel2" role="progressbar" data-testid="evidence"
         aria-label={a.kind === 'choose' ? 'Evidence collected for this choice' : 'Evidence collected for the confirmation'}
         aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(frac * 100)}>
-        <div className="h-full bg-sky-400 transition-all" style={{ width: `${frac * 100}%` }} />
+        <div className="h-full bg-sky-400" style={{ width: `${frac * 100}%` }} />
       </div>
       <span className="w-40 text-right text-sm text-muted">{a.kind === 'choose' ? 'collecting evidence' : 'checking'} {a.elapsed_s.toFixed(1)} s</span>
     </div>
@@ -346,8 +347,44 @@ function CalibrationTargets({ s }: { s: State }) {
   )
 }
 
-export default function PatientView({ s }: { s: State }) {
+const STAGES: { key: string; label: string; phases: string[] }[] = [
+  { key: 'choose', label: 'Choose', phases: ['IDLE', 'EVIDENCE_COLLECTION', 'ABSTAINED', 'REJECTED', 'ACCEPTED'] },
+  { key: 'confirm', label: 'Confirm YES / NO', phases: ['PREDICTION_HIGHLIGHTED'] },
+  { key: 'send', label: 'Check & SEND', phases: ['MESSAGE_REVIEW'] },
+  { key: 'sent', label: 'Sent', phases: ['MESSAGE_SENT'] },
+]
+
+/** Where the patient is in the selection → confirmation → send sequence. */
+export function StageIndicator({ s }: { s: State }) {
+  const cur = STAGES.findIndex((st) => st.phases.includes(s.phase))
+  if (cur < 0) return null
+  return (
+    <ol aria-label="Step" data-testid="stage-indicator" className="flex flex-wrap gap-2 text-lg">
+      {STAGES.map((st, i) => (
+        <li key={st.key} aria-current={i === cur ? 'step' : undefined} data-active={i === cur ? 'true' : 'false'}
+          className={`rounded-xl border-2 px-3 py-1 font-bold ${i === cur ? 'border-pending bg-pending text-black' : i < cur ? 'border-line text-muted' : 'border-line text-muted opacity-60'}`}>
+          {i + 1}. {st.label}
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+/** Signal problem that has not (yet) paused communication: shown, never silent. */
+function SignalWarning({ s }: { s: State }) {
+  if (s.phase === 'COMM_UNAVAILABLE' || s.phase === 'OFF' || s.calibration) return null
+  const q = s.quality
+  if (q.signal_ok !== false && !q.problem) return null
+  return (
+    <p role="status" data-testid="signal-warning" className="rounded-2xl border-4 border-amber-400 bg-amber-950 px-4 py-2 text-xl font-bold">
+      ⚠ Signal quality: {q.problem ?? 'check electrodes'}
+    </p>
+  )
+}
+
+export default function PatientView({ s, link }: { s: State; link?: { connected: boolean; stale: boolean } }) {
   const inputs = readInputs(s)
+  const offline = !!link && (!link.connected || link.stale)
   const highlighted = s.phase === 'PREDICTION_HIGHLIGHTED'
   const review = s.phase === 'MESSAGE_REVIEW' && s.review
   return (
@@ -363,6 +400,8 @@ export default function PatientView({ s }: { s: State }) {
       </header>
       <NeuroRouteStrip s={s} />
       <InputStrip vm={inputs} action={s.attempt?.kind ?? null} />
+      <SignalWarning s={s} />
+      <StageIndicator s={s} />
 
       <nav aria-label="Where you are" className="flex flex-wrap items-center gap-2 text-xl">
         <span className="font-bold">Home</span>
@@ -463,6 +502,13 @@ export default function PatientView({ s }: { s: State }) {
           HELP NOW <span className="text-sm font-semibold">(demo)</span>
         </button>
       </footer>
+      {offline && (
+        <Overlay tone="bg-zinc-950/95" label="Connection to NeuroSteno lost" role="status" testId="offline-overlay">
+          <p className="text-5xl font-black text-amber-300">Connection lost</p>
+          <p className="max-w-3xl text-2xl">Nothing is being read or selected. Reconnecting automatically…</p>
+          <p className="max-w-3xl text-lg text-muted">Flicker is paused. This is not an alarm. The last screen is hidden so it cannot be mistaken for a live one.</p>
+        </Overlay>
+      )}
     </section>
   )
 }

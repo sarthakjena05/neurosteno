@@ -116,7 +116,7 @@ describe('judge comparison view', () => {
     await waitFor(() => screen.getByTestId('arm-adaptive'))
     const arm = screen.getByTestId('arm-adaptive')
     expect(within(arm).getByText('MEASURED · SIMULATED')).toBeInTheDocument()
-    expect(within(arm).getByText(/this session, all Mobility messages at 2 targets/)).toBeInTheDocument()
+    expect(within(arm).getByText(/saved runs on this machine, all Mobility messages at 2 targets/)).toBeInTheDocument()
     expect(within(arm).getByText(/correct msgs\/min/)).toHaveTextContent('1.33 correct msgs/min')
   })
 
@@ -212,7 +212,7 @@ describe('backend v1.3 integration (B1/B2/B3)', () => {
     render(<ComparePage s={mockState({ safety_invariants: { messages_sent_without_final_confirmation: 0, blocked_unconfirmed_send_attempts: 2 } })} ab={noAB} />)
     await waitFor(() => screen.getByTestId('safety-invariant'))
     expect(screen.getByTestId('safety-invariant')).toHaveTextContent('guaranteed by code, not a measurement')
-    expect(screen.getByTestId('safety-invariant')).toHaveTextContent('blocked this session: 2')
+    expect(screen.getByTestId('safety-invariant')).toHaveTextContent('blocked since the backend started: 2')
   })
 })
 

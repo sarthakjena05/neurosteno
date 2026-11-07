@@ -14,7 +14,7 @@ g.tec Unicorn Hybrid Black and the official UnicornPy API.
 | UnicornPy acquisition (UN-2024.09.36 over Intel Bluetooth) | ✅ 10 s streamed: 2500 samples @ 250 Hz, 0 dropped (counter-verified) |
 | Real EEG signal validity | ⚠️ **Not yet.** Bring-up recording had all 8 channels identical (corr 1.000) with large DC drift: headset not worn / ear-clip reference not attached. Must be redone with the headset on. |
 | Real-EEG SSVEP classification | ❌ **Not validated.** REAL mode refuses to communicate until calibrated on real data. |
-| SIMULATED + REPLAY modes, full UI, phrase engine, routing | ✅ working; backend 50 tests, frontend 85 tests passing |
+| SIMULATED + REPLAY modes, full UI, phrase engine, routing | ✅ working; backend 50 tests, frontend 111 tests passing |
 | c-VEP (experimental mode) | ⏳ not started; stimulus math (cyclic-shift codes, frame-locked renderer) is in place |
 
 ## Architecture
@@ -99,7 +99,8 @@ The first SciPy import after install can take 30–90 s while Windows Defender s
 .\start-frontend.ps1         # http://localhost:5173
 ```
 Or build once (`cd frontend; npm run build`) and use only the backend at http://127.0.0.1:8000.
-Patient-only fullscreen view: append `#patient` to the URL.
+Patient-only fullscreen view: **⛶ Patient full screen** in the top bar (or append `#patient` to the URL); **◐ High contrast** next to it.
+Launch, preflight and recovery steps for the demo: **OPERATOR_CHECKLIST.md**.
 
 ## Hardware test (real headset)
 
@@ -126,7 +127,7 @@ currently shows a driver error in Device Manager.
 
 ```powershell
 cd backend;  .\.venv\Scripts\python -m pytest -q      # 50 tests, ~40 s
-cd frontend; npm test                                   # 85 tests
+cd frontend; npm test                                   # 111 tests
 ```
 Covered: catalog quality (≥1,000 unique phrases), reachability of every phrase for 2/3/5 targets ×
 3 profiles × static/adaptive, slot packing never loops, Back/Home/Undo, wrong prediction → rejection

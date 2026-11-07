@@ -102,6 +102,39 @@ function withActive(methods: Partial<Record<MethodKey, MethodState>>, eeg: Metho
   return out
 }
 
+/* ---- defensive parsing of the (future) backend payload: unknown or malformed ⇒ the safe value ---- */
+const STATUSES: MethodStatus[] = ['available', 'unavailable', 'not_calibrated', 'calibrating', 'calibrated', 'unreliable', 'disabled']
+const MODES: InputMode[] = ['eeg_only', 'hybrid', 'motion_assisted']
+const POLICY_METHODS = ['eeg_ssvep', 'nod_yes', 'shake_no', 'tilt_nav', 'eeg_fallback']
+function isObj(v: unknown): v is Record<string, unknown> { return !!v && typeof v === 'object' && !Array.isArray(v) }
+function isMode(v: unknown): v is InputMode { return MODES.includes(v as InputMode) }
+const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+
+export function sanitizeMethod(v: unknown): MethodState | null {
+  if (!isObj(v)) return null
+  const status = STATUSES.includes(v.status as MethodStatus) ? v.status as MethodStatus : 'unavailable'
+  return { status, enabled: v.enabled === true, reason: typeof v.reason === 'string' ? v.reason : null, calibration: isObj(v.calibration) ? v.calibration as unknown as GestureCalib : null }
+}
+export function sanitizeImu(v: unknown): ImuState | null {
+  if (!isObj(v)) return null
+  return { present: v.present === true, streaming: v.streaming === true, origin: typeof v.origin === 'string' ? v.origin : 'unknown',
+    moving: v.moving === true, motion_level: Math.max(0, Math.min(1, num(v.motion_level) ?? 0)), eeg_contaminated: v.eeg_contaminated === true,
+    seconds_since_last_sample: num(v.seconds_since_last_sample) }
+}
+export function sanitizeGesture(v: unknown): GestureEvent | null {
+  if (!isObj(v) || typeof v.gesture !== 'string') return null
+  const used = v.used_for === 'yes' || v.used_for === 'no' || v.used_for === 'nav' ? v.used_for : null
+  return { gesture: v.gesture, confidence: num(v.confidence) ?? 0, accepted: v.accepted === true, used_for: used, reason: typeof v.reason === 'string' ? v.reason : '', time: num(v.time) ?? 0 }
+}
+export function sanitizePolicy(v: unknown): PolicyState | null {
+  if (!isObj(v) || !Array.isArray(v.options)) return null
+  const options = (v.options as unknown[]).filter(isObj).filter((o) => POLICY_METHODS.includes(String(o.method))).map((o) => ({
+    method: o.method as PolicyOption['method'], allowed: o.allowed === true, expected_latency_s: num(o.expected_latency_s), confidence: num(o.confidence), reason: typeof o.reason === 'string' ? o.reason : '' }))
+  const action = ['choose', 'confirm', 'review', 'navigate'].includes(String(v.action)) ? v.action as PolicyState['action'] : 'choose'
+  const selected = POLICY_METHODS.includes(String(v.selected)) ? v.selected as PolicyState['selected'] : 'eeg_fallback'
+  return { action, selected, options, constraints: Array.isArray(v.constraints) ? v.constraints.filter((c): c is string => typeof c === 'string') : [], source: v.source === 'calibrated' ? 'calibrated' : 'assumption' }
+}
+
 function abstainFrom(s: State): InputsVM['abstain'] {
   const t = s.feedback?.type
   if (t === 'conflict') return { type: 'conflict', text: s.feedback?.reason ?? 'Brain signal and head movement disagreed' }
@@ -113,11 +146,19 @@ export function readInputs(s: State, contract: 'proposed' | 'confirmed' = MULTIM
   const sensorInStream = !!s.source?.channels?.some((c) => c.kind === 'accel' || c.kind === 'gyro')
   const raw = (s as State & { input?: InputBackend; policy?: PolicyState }).input
   const policy = (s as State & { policy?: PolicyState }).policy ?? null
-  if (contract === 'confirmed' && raw && typeof raw === 'object' && raw.methods) {
+  if (contract === 'confirmed' && isObj(raw) && isObj(raw.methods)) {
+    const modesAvailable = Array.from(new Set<InputMode>(['eeg_only', ...(Array.isArray(raw.modes_available) ? raw.modes_available.filter(isMode) : [])]))
+    const mode: InputMode = isMode(raw.mode) && modesAvailable.includes(raw.mode) ? raw.mode : 'eeg_only'
+    const methods: Partial<Record<MethodKey, MethodState>> = {}
+    for (const k of ['eeg_ssvep', ...GESTURES] as MethodKey[]) {
+      const m = sanitizeMethod((raw.methods as Record<string, unknown>)[k])
+      if (m) methods[k] = m
+    }
     return {
-      provenance: 'backend', mode: raw.mode ?? 'eeg_only', modesAvailable: raw.modes_available ?? ['eeg_only'], modeReason: raw.mode_reason ?? '',
-      methods: withActive(raw.methods, eegState(s), 'Not reported by the backend'),
-      sensorInStream, imu: raw.imu ?? null, policy, lastGesture: raw.last_gesture ?? null, gestureCal: raw.gesture_calibration ?? null,
+      provenance: 'backend', mode, modesAvailable, modeReason: typeof raw.mode_reason === 'string' ? raw.mode_reason : '',
+      methods: withActive(methods, eegState(s), 'Not reported by the backend'),
+      sensorInStream, imu: sanitizeImu(raw.imu), policy: sanitizePolicy(policy), lastGesture: sanitizeGesture(raw.last_gesture),
+      gestureCal: isObj(raw.gesture_calibration) && typeof (raw.gesture_calibration as GestureCalibSession).sub === 'string' ? raw.gesture_calibration as GestureCalibSession : null,
       abstain: abstainFrom(s),
     }
   }
