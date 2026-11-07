@@ -27,11 +27,11 @@ export default function NoiseInjection({ s }: { s: State }) {
         </p>
         <label className="text-sm" htmlFor="inj">Injected noise: <b>{val.toFixed(0)} µV</b> RMS per EEG channel
           {val === 0 ? ' · processed = raw EEG' : ' · processed = raw EEG + synthetic noise'}</label>
-        <input id="inj" type="range" min={0} max={60} step={1} value={val}
+        <input id="inj" type="range" min={0} max={100} step={1} value={val}
           onChange={(e) => setVal(Number(e.target.value))}
           onMouseUp={() => send(val)} onTouchEnd={() => send(val)} onKeyUp={() => send(val)} className="w-full" />
         <div className="flex flex-wrap gap-2">
-          {[0, 10, 20, 30, 45].map((v) => (
+          {[0, 20, 40, 60, 80].map((v) => (
             <button key={v} type="button" onClick={() => { setVal(v); send(v) }}
               className={`rounded-lg px-3 py-1 text-sm font-semibold ${injected === v ? 'bg-sky-600 text-white' : 'bg-panel2 hover:bg-line'}`}>{v} µV</button>
           ))}

@@ -1,0 +1,438 @@
+{
+ "kind": "noise_reliability",
+ "data_origin": "simulated",
+ "description": "Decoder reliability vs measured SNR loss from injected noise. Real FBCCA + dynamic stopping calibrated on clean SIMULATED SSVEP, decoded under the live noise injector. A reference model, not a measurement on the wearer.",
+ "metric": "snr_loss_db = 20*log10(band_noise(processed)/band_noise(raw)), 3-40 Hz, decoding channels",
+ "levels_uv": [
+  0,
+  2,
+  4,
+  6,
+  8,
+  10,
+  12,
+  15,
+  18,
+  22,
+  27,
+  33,
+  40
+ ],
+ "trials_per_target": 40,
+ "seed": 7,
+ "by_n": {
+  "2": {
+   "freqs": [
+    7.5,
+    12.0
+   ],
+   "max_window_s": 3.76,
+   "calibration": {
+    "supported": true,
+    "estimate": {
+     "accuracy_of_accepted": 1.0,
+     "abstention_rate": 0.0,
+     "mean_decision_s": 1.3,
+     "rest_false_accept_rate": 0.0,
+     "n_accepted": 10
+    }
+   },
+   "rows": [
+    {
+     "injected_uv": 0,
+     "snr_loss_db": 0.0,
+     "trials": 80,
+     "accepted": 79,
+     "accuracy": 0.975,
+     "abstain": 0.012,
+     "decision_s": 1.532
+    },
+    {
+     "injected_uv": 2,
+     "snr_loss_db": 0.58,
+     "trials": 80,
+     "accepted": 78,
+     "accuracy": 0.974,
+     "abstain": 0.025,
+     "decision_s": 1.583
+    },
+    {
+     "injected_uv": 4,
+     "snr_loss_db": 2.0,
+     "trials": 80,
+     "accepted": 72,
+     "accuracy": 0.958,
+     "abstain": 0.1,
+     "decision_s": 1.882
+    },
+    {
+     "injected_uv": 6,
+     "snr_loss_db": 3.53,
+     "trials": 80,
+     "accepted": 65,
+     "accuracy": 0.908,
+     "abstain": 0.188,
+     "decision_s": 2.135
+    },
+    {
+     "injected_uv": 8,
+     "snr_loss_db": 5.09,
+     "trials": 80,
+     "accepted": 56,
+     "accuracy": 0.911,
+     "abstain": 0.3,
+     "decision_s": 2.04
+    },
+    {
+     "injected_uv": 10,
+     "snr_loss_db": 6.55,
+     "trials": 80,
+     "accepted": 45,
+     "accuracy": 0.889,
+     "abstain": 0.438,
+     "decision_s": 2.122
+    },
+    {
+     "injected_uv": 12,
+     "snr_loss_db": 7.84,
+     "trials": 80,
+     "accepted": 42,
+     "accuracy": 0.762,
+     "abstain": 0.475,
+     "decision_s": 2.149
+    },
+    {
+     "injected_uv": 15,
+     "snr_loss_db": 9.51,
+     "trials": 80,
+     "accepted": 25,
+     "accuracy": 0.68,
+     "abstain": 0.688,
+     "decision_s": 2.06
+    },
+    {
+     "injected_uv": 18,
+     "snr_loss_db": 10.89,
+     "trials": 80,
+     "accepted": 31,
+     "accuracy": 0.742,
+     "abstain": 0.613,
+     "decision_s": 2.073
+    },
+    {
+     "injected_uv": 22,
+     "snr_loss_db": 12.6,
+     "trials": 80,
+     "accepted": 30,
+     "accuracy": 0.5,
+     "abstain": 0.625,
+     "decision_s": 2.408
+    },
+    {
+     "injected_uv": 27,
+     "snr_loss_db": 14.28,
+     "trials": 80,
+     "accepted": 30,
+     "accuracy": 0.467,
+     "abstain": 0.625,
+     "decision_s": 2.233
+    },
+    {
+     "injected_uv": 33,
+     "snr_loss_db": 16.03,
+     "trials": 80,
+     "accepted": 24,
+     "accuracy": 0.417,
+     "abstain": 0.7,
+     "decision_s": 1.938
+    },
+    {
+     "injected_uv": 40,
+     "snr_loss_db": 17.63,
+     "trials": 80,
+     "accepted": 26,
+     "accuracy": 0.615,
+     "abstain": 0.675,
+     "decision_s": 1.875
+    }
+   ]
+  },
+  "3": {
+   "freqs": [
+    6.67,
+    8.57,
+    12.0
+   ],
+   "max_window_s": 3.76,
+   "calibration": {
+    "supported": true,
+    "estimate": {
+     "accuracy_of_accepted": 1.0,
+     "abstention_rate": 0.067,
+     "mean_decision_s": 1.37,
+     "rest_false_accept_rate": 0.0,
+     "n_accepted": 14
+    }
+   },
+   "rows": [
+    {
+     "injected_uv": 0,
+     "snr_loss_db": 0.0,
+     "trials": 120,
+     "accepted": 120,
+     "accuracy": 0.925,
+     "abstain": 0.0,
+     "decision_s": 1.562
+    },
+    {
+     "injected_uv": 2,
+     "snr_loss_db": 0.58,
+     "trials": 120,
+     "accepted": 116,
+     "accuracy": 0.897,
+     "abstain": 0.033,
+     "decision_s": 1.681
+    },
+    {
+     "injected_uv": 4,
+     "snr_loss_db": 1.92,
+     "trials": 120,
+     "accepted": 113,
+     "accuracy": 0.876,
+     "abstain": 0.058,
+     "decision_s": 1.768
+    },
+    {
+     "injected_uv": 6,
+     "snr_loss_db": 3.52,
+     "trials": 120,
+     "accepted": 91,
+     "accuracy": 0.78,
+     "abstain": 0.242,
+     "decision_s": 1.797
+    },
+    {
+     "injected_uv": 8,
+     "snr_loss_db": 5.2,
+     "trials": 120,
+     "accepted": 73,
+     "accuracy": 0.74,
+     "abstain": 0.392,
+     "decision_s": 1.887
+    },
+    {
+     "injected_uv": 10,
+     "snr_loss_db": 6.52,
+     "trials": 120,
+     "accepted": 62,
+     "accuracy": 0.677,
+     "abstain": 0.483,
+     "decision_s": 1.798
+    },
+    {
+     "injected_uv": 12,
+     "snr_loss_db": 7.77,
+     "trials": 120,
+     "accepted": 62,
+     "accuracy": 0.613,
+     "abstain": 0.483,
+     "decision_s": 1.847
+    },
+    {
+     "injected_uv": 15,
+     "snr_loss_db": 9.52,
+     "trials": 120,
+     "accepted": 57,
+     "accuracy": 0.456,
+     "abstain": 0.525,
+     "decision_s": 1.697
+    },
+    {
+     "injected_uv": 18,
+     "snr_loss_db": 10.91,
+     "trials": 120,
+     "accepted": 38,
+     "accuracy": 0.474,
+     "abstain": 0.683,
+     "decision_s": 1.809
+    },
+    {
+     "injected_uv": 22,
+     "snr_loss_db": 12.57,
+     "trials": 120,
+     "accepted": 48,
+     "accuracy": 0.417,
+     "abstain": 0.6,
+     "decision_s": 1.844
+    },
+    {
+     "injected_uv": 27,
+     "snr_loss_db": 14.35,
+     "trials": 120,
+     "accepted": 38,
+     "accuracy": 0.316,
+     "abstain": 0.683,
+     "decision_s": 1.704
+    },
+    {
+     "injected_uv": 33,
+     "snr_loss_db": 15.95,
+     "trials": 120,
+     "accepted": 46,
+     "accuracy": 0.391,
+     "abstain": 0.617,
+     "decision_s": 1.832
+    },
+    {
+     "injected_uv": 40,
+     "snr_loss_db": 17.6,
+     "trials": 120,
+     "accepted": 41,
+     "accuracy": 0.317,
+     "abstain": 0.658,
+     "decision_s": 1.524
+    }
+   ]
+  },
+  "5": {
+   "freqs": [
+    6.67,
+    7.5,
+    8.57,
+    10.0,
+    12.0
+   ],
+   "max_window_s": 3.76,
+   "calibration": {
+    "supported": true,
+    "estimate": {
+     "accuracy_of_accepted": 0.96,
+     "abstention_rate": 0.0,
+     "mean_decision_s": 2.02,
+     "rest_false_accept_rate": 0.0,
+     "n_accepted": 25
+    }
+   },
+   "rows": [
+    {
+     "injected_uv": 0,
+     "snr_loss_db": 0.0,
+     "trials": 200,
+     "accepted": 196,
+     "accuracy": 0.969,
+     "abstain": 0.02,
+     "decision_s": 2.21
+    },
+    {
+     "injected_uv": 2,
+     "snr_loss_db": 0.59,
+     "trials": 200,
+     "accepted": 187,
+     "accuracy": 0.968,
+     "abstain": 0.065,
+     "decision_s": 2.428
+    },
+    {
+     "injected_uv": 4,
+     "snr_loss_db": 1.93,
+     "trials": 200,
+     "accepted": 149,
+     "accuracy": 0.98,
+     "abstain": 0.255,
+     "decision_s": 2.624
+    },
+    {
+     "injected_uv": 6,
+     "snr_loss_db": 3.52,
+     "trials": 200,
+     "accepted": 95,
+     "accuracy": 0.947,
+     "abstain": 0.525,
+     "decision_s": 2.866
+    },
+    {
+     "injected_uv": 8,
+     "snr_loss_db": 5.12,
+     "trials": 200,
+     "accepted": 66,
+     "accuracy": 0.924,
+     "abstain": 0.67,
+     "decision_s": 2.977
+    },
+    {
+     "injected_uv": 10,
+     "snr_loss_db": 6.5,
+     "trials": 200,
+     "accepted": 45,
+     "accuracy": 0.8,
+     "abstain": 0.775,
+     "decision_s": 2.906
+    },
+    {
+     "injected_uv": 12,
+     "snr_loss_db": 7.82,
+     "trials": 200,
+     "accepted": 21,
+     "accuracy": 0.81,
+     "abstain": 0.895,
+     "decision_s": 2.619
+    },
+    {
+     "injected_uv": 15,
+     "snr_loss_db": 9.55,
+     "trials": 200,
+     "accepted": 23,
+     "accuracy": 0.391,
+     "abstain": 0.885,
+     "decision_s": 2.728
+    },
+    {
+     "injected_uv": 18,
+     "snr_loss_db": 10.91,
+     "trials": 200,
+     "accepted": 17,
+     "accuracy": 0.529,
+     "abstain": 0.915,
+     "decision_s": 2.853
+    },
+    {
+     "injected_uv": 22,
+     "snr_loss_db": 12.57,
+     "trials": 200,
+     "accepted": 11,
+     "accuracy": 0.636,
+     "abstain": 0.945,
+     "decision_s": 3.25
+    },
+    {
+     "injected_uv": 27,
+     "snr_loss_db": 14.25,
+     "trials": 200,
+     "accepted": 12,
+     "accuracy": 0.25,
+     "abstain": 0.94,
+     "decision_s": 3.0
+    },
+    {
+     "injected_uv": 33,
+     "snr_loss_db": 15.89,
+     "trials": 200,
+     "accepted": 12,
+     "accuracy": 0.417,
+     "abstain": 0.94,
+     "decision_s": 2.75
+    },
+    {
+     "injected_uv": 40,
+     "snr_loss_db": 17.59,
+     "trials": 200,
+     "accepted": 3,
+     "accuracy": 0.333,
+     "abstain": 0.985,
+     "decision_s": 3.0
+    }
+   ]
+  }
+ },
+ "runtime_s": 310.7
+}

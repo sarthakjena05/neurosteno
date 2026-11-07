@@ -89,7 +89,9 @@ class QualityAdaptMixin:
             return
         loss = 20 * math.log10(max(p, 1e-9) / max(r, 1e-9))
         prev = self.qa["loss_ema"]
-        dt = 0.25
+        last_t = self.qa.get("loss_t")
+        dt = 0.25 if last_t is None else min(5.0, max(0.0, now - last_t))  # real elapsed time between updates
+        self.qa["loss_t"] = now
         alpha = 1 - math.exp(-dt / EMA_S)
         ema = loss if prev is None else prev + alpha * (loss - prev)
         self.qa["loss_ema"] = ema
