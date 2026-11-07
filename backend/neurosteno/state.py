@@ -71,6 +71,7 @@ def snapshot(eng: Engine) -> dict:
             "trials": len(c.plan), "sub": c.sub, "cue_target": cue,
             "rest_trial": c.kind == "ssvep" and c.idx < len(c.plan) and c.plan[c.idx] is None,
             "elapsed": round(now - c.sub_since, 2),
+            "rejected_trials": c.rejected,
             "durations": {"cue": c.CUE_S, "stim": c.STIM_S, "break": c.BREAK_S, "relax": c.RELAX_S,
                           "blink": c.BLINK_CUE_S, "eyes_open": c.EYES_S, "eyes_closed": c.EYES_S},
         }
@@ -140,7 +141,8 @@ def snapshot(eng: Engine) -> dict:
         | {"elapsed_s": round(now - eng.task["started"], 1)},
         "intended": None if not eng.intended else {"node_id": eng.intended, "text": eng.catalog.get(eng.intended).phrase},
         "metrics": {"recent": eng.metrics[-12:][::-1], "summary": eng.metrics_summary()},
-        "adaptation": {"auto": eng.cfg.auto_adapt, "recent": [o[0] for o in eng.outcomes], "last_change": eng.last_adaptation},
+        "adaptation": {"auto": eng.cfg.auto_adapt, "recent": [o[0] for o in eng.outcomes], "last_change": eng.last_adaptation,
+                       "model": eng.adapt_model},
         "sim": None if sim is None else {
             "gaze_key": eng.sim_gaze_key, "gaze_hz": sim.gaze_hz,
             "autopilot": None if not eng.sim_autopilot else {"node_id": eng.sim_autopilot,

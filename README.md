@@ -76,6 +76,73 @@ Exact selection counts (no EEG involved), static → risk-aware, 2 targets:
 
 The +1 cases are the deliberate cost of always-visible urgent routes in that category.
 
+## A/B/C/D benchmark (SIMULATED)
+
+**Question:** can context-aware, risk-aware, signal-adaptive navigation increase *correctly confirmed
+messages per minute* (CMPM) compared with a conventional fixed-menu EEG speller?
+
+```powershell
+cd backend
+.\.venv\Scripts\python scripts\run_benchmark.py              # 5 replicates, ~2 min first run, ~25 s cached
+.\.venv\Scripts\python scripts\run_benchmark.py --quick      # smoke run
+```
+Output: `backend/reports/benchmark_results.json` (schema 1.0, served by `GET /api/benchmark`) and
+`backend/reports/benchmark_summary.md`. Fixed seeds: same arguments → same numbers.
+
+**Method.** Decoder outcomes come from the real FBCCA/dynamic-stopping code run on synthetic EEG at
+three SNR levels plus a *degrading* scenario (high → low half-way). Calibration uses the live
+protocol (5 trials/target + 8 rest) on one seed; outcomes are drawn from **held-out** test trials on
+another. A perfect-intent simulated patient walks the real `Navigator`, which includes recovery via
+"Go back". Every condition gets the same tasks, signal schedule and random seed. Sessions:
+5 replicates × 3 profiles × 2 task mixes × 4 scenarios, each 14 messages + 6 urgent probes + 3 min of
+no-control. 95% CIs are percentile bootstrap over sessions; differences are paired.
+
+| | Condition |
+|---|---|
+| A*n* | fixed menu, *n* targets, fixed-window forced-choice SSVEP (window by ITR on calibration), final confirmation only |
+| B*n* | A + context-aware semantic routing (shortcuts + urgent routes) |
+| C | B + signal-adaptive *n* chosen from calibration (`adaptive.choose_n`) |
+| D | full NeuroSteno: dynamic stopping + abstention + no-control rejection, explicit YES/NO on every step, live re-adaptation of *n* |
+| D+ | D with confidence-gated step confirmation (`policy: gated`): YES/NO skipped only when margin ≥ 1.5× calibrated threshold; final message always confirmed |
+
+A* = best fixed-menu *n* **chosen in hindsight** (an oracle that favours the baseline; it was A5 in every cell).
+
+**Results (simulated, ratio of CMPM vs A\*, mean [95% CI], 15 paired sessions per cell, matched task mix):**
+
+| Scenario | B (context) | D (explicit) | D+ (gated) |
+|---|---|---|---|
+| high SNR | 1.22 [1.14, 1.30] | 0.98 [0.90, 1.07] | **1.28 [1.19, 1.38]** |
+| medium SNR | 1.23 [1.14, 1.33] | 0.72 [0.64, 0.80] | 0.85 [0.74, 0.96] |
+| low SNR | 1.31 [1.20, 1.44] | 0.32 [0.22, 0.43] | 0.60 [0.46, 0.76] |
+| degrading | 1.44 [1.27, 1.63] | 1.33 [0.88, 1.86] | 1.45 [1.02, 2.04] |
+
+Safety, pooled over all sessions:
+
+| | error rate (wrong messages confirmed) | messages sent during no-control | selections during no-control |
+|---|---|---|---|
+| A5 / B5 / C | 2.6–2.9 % (11 % for A5 in *degrading*) | **about 50 per hour** (49.7–53.9) | 10.7–10.9 per min |
+| D | 0 % | 0 per hour | 0.06 per min |
+| D+ | 0.05 % | 0.3 per hour | 0.7 per min |
+
+Urgent access: urgent messages need 5.1 / 3.7 / 2.5 selections from Home with context routing,
+versus 9.3 / 7.7 / 4.5 on the static menu (*n* = 2 / 3 / 5, exact counts).
+
+**What this does and does not show (simulation only):**
+* Context-aware routing (B) gave the most consistent gain: +7 % to +44 % CMPM in every scenario. The
+  gain is smaller on the *uniform* task mix (+7 % to +20 %), where context does not match the need.
+* Forced-choice fixed menus keep selecting when the patient attends nothing. In these runs they confirmed
+  about one unintended message per minute of no-control. D/D+ nearly eliminate this; that is the main
+  safety benefit of abstention, no-control rejection and confirmation.
+* Safety costs throughput. D (explicit YES/NO every step) is slower than A* except in the degrading
+  scenario. D+ beats A* only at high SNR and under degradation, and is slower at medium and low SNR,
+  where dynamic stopping abstains instead of guessing.
+* Signal-adaptive *n* (C) did not beat the best fixed *n* here. 5 targets was best whenever the signal
+  was constant, and at low SNR the 5-trial calibration occasionally picked 3 and lost. Its value is
+  avoiding the wrong *n* when the best one is not known in advance; the oracle A* hides that.
+* `adaptive.py`'s analytic model over-predicts simulated CMPM by about 25–35 %, because it is fed
+  optimistic in-sample calibration. It is used to rank *n*, not to report throughput.
+* No real-EEG results exist yet; real sessions will be reported separately (origin `real`).
+
 ## Windows installation
 
 Prerequisites: Windows 10/11, **Python 3.12** (`py -3.12`), Node.js 20+, Unicorn Suite Hybrid
@@ -144,7 +211,7 @@ currently shows a driver error in Device Manager.
 ## Tests
 
 ```powershell
-cd backend;  .\.venv\Scripts\python -m pytest -q      # 60 tests, ~25 s
+cd backend;  .\.venv\Scripts\python -m pytest -q      # 76 tests, ~35 s
 cd frontend; npm test                                   # 13 tests
 ```
 Covered: catalog quality (≥1,000 unique phrases), reachability of every phrase for 2/3/5 targets ×
@@ -164,4 +231,4 @@ record/replay round trip, API + WebSocket smoke, and UI rendering (home, highlig
 * Blink input is experimental and off by default. Double-blink vs. eye closure is not distinguished.
 * Flicker at 6–12 Hz can trigger photosensitive seizures. Stimulation is off until explicitly enabled.
 * HELP NOW is a demo control only. Nonresponse never triggers an emergency.
-* c-VEP mode, the confusion-matrix-aware NeuroRoute optimizer, and the A–D benchmark are not implemented yet.
+* c-VEP mode and the confusion-matrix-aware NeuroRoute optimizer are not implemented yet. The A–D benchmark is simulation-only.

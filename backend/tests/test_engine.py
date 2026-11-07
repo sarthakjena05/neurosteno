@@ -115,7 +115,8 @@ def test_adaptive_choice_count_increases_with_good_performance():
         produce_message(eng, clock, target)
     assert eng.cfg.n_choices in (3, 5)
     assert eng.last_adaptation and eng.last_adaptation["to"] > eng.last_adaptation["from"]
-    assert any("Choices per screen 2 -> 3" in e["text"] for e in eng.events)
+    # The optimiser may jump straight to the best n; the switch is justified by expected throughput.
+    assert any(e["text"].startswith("Choices per screen 2 -> ") and "messages/min" in e["text"] for e in eng.events)
 
 
 def test_emergency_demo_control():

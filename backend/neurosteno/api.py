@@ -166,11 +166,17 @@ async def routing_compare():
 
 
 @app.get("/api/benchmark")
-def benchmark():
+def benchmark(sessions: bool = False):
+    """SIMULATED A/B/C/D benchmark report (scripts/run_benchmark.py). Per-session rows (~1 MB)
+    only with ?sessions=true."""
     p = Path(__file__).resolve().parents[1] / "reports" / "benchmark_results.json"
     if not p.exists():
         return {"available": False}
-    return {"available": True, **json.loads(p.read_text(encoding="utf-8"))}
+    data = json.loads(p.read_text(encoding="utf-8"))
+    if not sessions:
+        data.pop("sessions", None)
+        data.pop("decoder_pools", None)
+    return {"available": True, **data}
 
 
 @app.post("/api/emergency")
@@ -201,8 +207,8 @@ def dispatch(action: str, p: dict) -> dict | None:
         e.cfg.auto_adapt = bool(p["on"])
         e.log("config", f"Adaptive choice count {'on' if e.cfg.auto_adapt else 'off'}")
     elif action == "set_policy":
-        if p["policy"] not in ("explicit", "provisional", "auto"):
-            raise ValueError("policy must be explicit, provisional or auto")
+        if p["policy"] not in ("explicit", "provisional", "gated", "auto"):
+            raise ValueError("policy must be explicit, provisional, gated or auto")
         e.cfg.policy = p["policy"]
         e.request_plan()
         e.log("config", f"Confirmation policy: {p['policy']}")
@@ -227,7 +233,7 @@ def dispatch(action: str, p: dict) -> dict | None:
     elif action == "ack_emergency":
         e.cmd_ack_emergency()
     elif action == "start_calibration":
-        e.start_calibration(int(p.get("n", 2)), int(p.get("trials_per_target", 5)), int(p.get("rest_trials", 4)))
+        e.start_calibration(int(p.get("n", 2)), int(p.get("trials_per_target", 5)), int(p.get("rest_trials", 8)))
     elif action == "start_blink_calibration":
         e.start_blink_calibration(int(p.get("cues", 8)))
     elif action == "start_alpha_check":

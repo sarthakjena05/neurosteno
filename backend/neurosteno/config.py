@@ -23,7 +23,10 @@ class EngineConfig:
     blink_labels: list[str] = field(default_factory=lambda: ["Fz"])
     n_choices: int = 2  # start with TWO real SSVEP targets
     auto_adapt: bool = False
-    policy: str = "explicit"  # "explicit" | "provisional" | "auto" (chosen from measured reliability)
+    policy: str = "explicit"  # "explicit" | "provisional" | "gated" | "auto" (chosen from measured reliability)
+    gate_margin_factor: float = 1.5  # "gated": skip the per-step YES/NO when margin >= factor x calibrated threshold
+    adapt_min_evidence: int = 8      # live outcomes at the current n before re-optimising n
+    adapt_hysteresis: float = 0.20   # required expected gain before switching n
     routing_mode: str = "adaptive"  # "adaptive" (risk-aware semantic routing) | "static" (baseline menu)
     sim_mistake_rate: float = 0.0  # SIMULATED only: probability the virtual patient's EEG follows a wrong target
     provisional_window_s: float = 3.0

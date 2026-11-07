@@ -39,9 +39,10 @@ from .config import RECORDINGS_DIR, EngineConfig
 from .context import Profile, ProfileStore, rank, shortcuts
 from .navigation import BACK_KEY, Navigator, Slot
 from .phrases.catalog import Catalog, Node
-from .routing import RoutingPlan, plan_routing
+from .adaptive import OnlineTracker, Rel, Timing, choose_n, live_estimates
+from .routing import RoutingPlan, plan_routing, reliability_for
 from .signal.blink import BlinkConfig, OnlineBlinkDetector, calibrate_blinks
-from .signal.calibration import Trial, calibrate
+from .signal.calibration import Trial, calibrate, trial_quality
 from .signal.fbcca import DynamicStopper, FBCCAConfig, StoppingConfig
 from .signal.electrodes import (ElectrodeConfig, alpha_reactivity, channel_contacts, channel_spectra,
                                 summarize_contacts)
@@ -97,6 +98,10 @@ class CalibSession:
     error: str | None = None
     relax_eeg: np.ndarray | None = None
     windows: list = field(default_factory=list)
+    max_extra: int = 0
+    rejected: int = 0
+    stim_dropped: int = 0
+    stim_problem: str | None = None
 
     CUE_S = 1.5
     STIM_S = 4.0
@@ -127,6 +132,9 @@ class Engine:
         self.consecutive_abstains = 0
         self.outcomes: deque = deque(maxlen=10)
         self.last_adaptation: dict | None = None
+        self.tracker = OnlineTracker()
+        self.adapt_since_switch = 0
+        self.adapt_model: dict | None = None
         self.sent: list[dict] = []
         self.events: deque = deque(maxlen=200)
         self.comm = {"available": False, "reason": "No EEG source selected", "needs_caregiver": False}
@@ -565,7 +573,10 @@ class Engine:
         if src is None:
             return
         targets = self._targets_for(kind)
-        n = len(targets) if kind == "choose" else 2
+        # A screen may show fewer slots than n_choices (it then uses the first k frequencies of
+        # the n-target set). Use the thresholds calibrated for that frequency set: there is no
+        # calibration for k=4, and falling back to the synthetic defaults would be unsafe on REAL.
+        n = self.cfg.n_choices if kind == "choose" else 2
         stopper = DynamicStopper([t.freq for t in targets], src.sample_rate, self.stopping_for(n), self.fbcca)
         mistake = False
         if kind == "choose":
@@ -626,6 +637,18 @@ class Engine:
             self.provisional_deadline = (self.clock() + self.cfg.provisional_window_s) if eligible else None
             self.confirm_abstains = 0
             self._enter(Phase.PREDICTION_HIGHLIGHTED)
+            gated = (self.effective_policy == "gated" and a.stopper.stopping.calibrated
+                     and dec.margin >= thr * self.cfg.gate_margin_factor)
+            if gated:
+                # High confidence relative to thresholds calibrated on THIS data origin: accept
+                # without a per-step YES/NO. The choice is still highlighted (ACCEPTED feedback),
+                # Undo/Back stay available, and the final message is always confirmed explicitly.
+                self.highlight["gated"] = True
+                self.log("decision", f"Predicted '{slot.label}' with high confidence (margin {dec.margin:.2f} >= "
+                         f"{self.cfg.gate_margin_factor} x {thr:.2f}): accepted without step confirmation (gated policy)")
+                self.attempt = None
+                self._accept(provisional=False, gated=True)
+                return
             self.log("decision", f"Predicted '{slot.label}' (margin {dec.margin:.2f} at {dec.window_s:.2f} s)"
                      + ("; provisional correction window" if eligible else "; awaiting confirmation"))
             self.attempt = None
@@ -653,6 +676,7 @@ class Engine:
                 self._enter(Phase.IDLE)
                 return
             self._task_count("abstentions")
+            self._evidence("abstain")
             self.outcomes.append(("abstained", None))
             self.consecutive_abstains += 1
             self.feedback = {"type": "abstained", "label": "Not sure what you chose - let's try again", "reason": dec.reason}
@@ -676,8 +700,15 @@ class Engine:
             self.log("decision", "Final confirmation unclear; message NOT sent, asking again")
             self._start_attempt("review")
 
-    def _accept(self, provisional: bool) -> None:
+    def _evidence(self, kind: str, decision_s: float | None = None) -> None:
+        """Live evidence for signal-adaptive n: the patient's own YES/NO on a highlight."""
+        self.tracker.add(self.cfg.n_choices, kind, decision_s)
+        self.adapt_since_switch += 1
+
+    def _accept(self, provisional: bool, gated: bool = False) -> None:
         h = self.highlight or {}
+        if not gated:  # a gated accept was not confirmed, so it says nothing about correctness
+            self._evidence("correct", h.get("window_s"))
         self.outcomes.append(("accepted", h.get("decision_time_s")))
         self._task_count("selections")
         if provisional:
@@ -687,10 +718,13 @@ class Engine:
         self.consecutive_abstains = 0
         self.attempt = None
         self.provisional_deadline = None
-        self.feedback = {"type": "accepted", "label": h.get("label", ""), "provisional": provisional}
+        if gated:
+            self._task_count("gated_accepts")
+        self.feedback = {"type": "accepted", "label": h.get("label", ""), "provisional": provisional, "gated": gated}
         self._enter(Phase.ACCEPTED)
 
     def _reject(self, reason: str, kind: str = "rejected") -> None:
+        self._evidence("abstain" if kind == "not_confirmed" else "wrong")
         self.outcomes.append(("rejected", None))
         self._task_count("rejected_predictions")
         self.feedback = {"type": kind, "label": (self.highlight or {}).get("label", ""), "reason": reason}
@@ -771,31 +805,60 @@ class Engine:
     # ===================================================================================
     # adaptive choice count
     # ===================================================================================
+    def _priors(self) -> dict[int, Rel]:
+        """Per-n reliability before live evidence: calibration on THIS data origin, else the
+        labelled assumptions from routing.ASSUMED."""
+        out = {}
+        for k in (2, 3, 5):
+            r = reliability_for(k, self.calib_results, self.source_origin())
+            res = self.calib_results.get(f"ssvep_{k}") or {}
+            ev = res.get("n_cued_trials", 0) if r.source.startswith("calibrated") else 0
+            out[k] = Rel(k, r.accuracy, r.abstain, r.decision_s, self.stopping_for(k).max_window_s, r.source, ev)
+        return out
+
+    def adaptation_model(self) -> dict | None:
+        """Expected correctly-confirmed messages per minute for each allowed n (adaptive.py)."""
+        allowed = [k for k in (2, 3, 5) if k in self.allowed_choices()]
+        by_n = (self.plan.recommended_n or {}).get("by_n", {}) if self.plan else {}
+        exp_sel = {k: by_n[k]["expected_selections"] for k in allowed if k in by_n}
+        if not exp_sel or self.cfg.n_choices not in exp_sel:
+            return None
+        priors = self._priors()
+        est = live_estimates(priors, self.tracker, self.cfg.n_choices)
+        tm = Timing(self.cfg.rest_s, self.cfg.feedback_s, self.cfg.sent_display_s, self.cfg.confirm_attempts)
+        dec = choose_n({k: est[k] for k in exp_sel}, priors[2], exp_sel, tm, sorted(exp_sel), step_confirm=True,
+                       current=self.cfg.n_choices, hysteresis=self.cfg.adapt_hysteresis)
+        dec["estimates"] = {k: est[k].to_dict() for k in exp_sel}
+        dec["evidence"] = {k: self.tracker.counts(k) for k in (2, 3, 5) if self.tracker.counts(k)["total"]}
+        dec["evidence_since_switch"] = self.adapt_since_switch
+        dec["min_evidence"] = self.cfg.adapt_min_evidence
+        dec["note"] = ("Model estimate (adaptive.py) from calibration on this data origin plus the patient's own "
+                       "YES/NO answers; not a measured throughput.")
+        return dec
+
     def _maybe_adapt(self) -> None:
-        if not self.cfg.auto_adapt or len(self.outcomes) < 4:
+        """Signal-adaptive target count: re-optimise expected correctly-confirmed messages per
+        minute after enough live evidence. Fewer targets are NOT assumed to be better."""
+        try:
+            self.adapt_model = self.adaptation_model()
+        except Exception as e:  # never let the optimiser break communication
+            self.log("adapt", f"Adaptation model failed: {e}")
             return
-        acc = [o for o in self.outcomes if o[0] in ("accepted", "rejected")]
-        accuracy = (sum(1 for o in acc if o[0] == "accepted") / len(acc)) if acc else 0.0
-        abstain = sum(1 for o in self.outcomes if o[0] == "abstained") / len(self.outcomes)
-        times = [o[1] for o in self.outcomes if o[0] == "accepted" and o[1] is not None]
-        mean_t = float(np.mean(times)) if times else None
-        levels = [n for n in (2, 3, 5) if n in self.allowed_choices()]
-        cur = self.cfg.n_choices
-        new = cur
-        if len(self.outcomes) >= 6 and accuracy >= 0.9 and abstain <= 0.15 and (mean_t or 99) <= 3.0:
-            higher = [n for n in levels if n > cur]
-            new = higher[0] if higher else cur
-        elif accuracy < 0.7 or abstain > 0.4:
-            lower = [n for n in levels if n < cur]
-            new = lower[-1] if lower else cur
-        if new != cur:
-            why = (f"last {len(self.outcomes)} selections: {accuracy:.0%} confirmed, {abstain:.0%} abstained"
-                   + (f", mean decision {mean_t:.1f} s" if mean_t else ""))
-            self.cfg.n_choices = new
-            self.outcomes.clear()
-            self.request_plan()
-            self.last_adaptation = {"from": cur, "to": new, "reason": why, "time": time.time()}
-            self.log("adapt", f"Choices per screen {cur} -> {new} ({why})")
+        m = self.adapt_model
+        if not self.cfg.auto_adapt or m is None or self.adapt_since_switch < self.cfg.adapt_min_evidence:
+            return
+        cur, new = self.cfg.n_choices, m["n"]
+        if new == cur:
+            return
+        bn = m["by_n"]
+        why = (f"expected correctly-confirmed messages/min {cur} targets: {bn[cur]['cmpm']:.2f} -> "
+               f"{new} targets: {bn[new]['cmpm']:.2f} (model, {self.adapt_since_switch} live outcomes)")
+        self.cfg.n_choices = new
+        self.adapt_since_switch = 0
+        self.outcomes.clear()
+        self.request_plan()
+        self.last_adaptation = {"from": cur, "to": new, "reason": why, "time": time.time()}
+        self.log("adapt", f"Choices per screen {cur} -> {new}: {why}")
 
     # ===================================================================================
     # simulated patient (SIMULATED mode only)
@@ -850,7 +913,7 @@ class Engine:
     # ===================================================================================
     # calibration sessions
     # ===================================================================================
-    def start_calibration(self, n: int, trials_per_target: int = 5, rest_trials: int = 4) -> None:
+    def start_calibration(self, n: int, trials_per_target: int = 5, rest_trials: int = 8) -> None:
         if self.source is None:
             raise ValueError("Select an EEG source first")
         if n not in self.cfg.freqs:
@@ -860,6 +923,7 @@ class Engine:
         rng.shuffle(plan)
         self._cancel_attempt()
         self.calib = CalibSession("ssvep", n=n, freqs=list(self.cfg.freqs[n]), plan=plan, sub_since=self.clock())
+        self.calib.max_extra = len(plan) // 2  # re-queued trials allowed after quality rejections
         self._enter(Phase.CALIBRATING)
         self.log("calibration", f"SSVEP calibration started: {n} targets, {len(plan)} trials")
 
@@ -910,10 +974,14 @@ class Engine:
             return
         elapsed = now - c.sub_since
         fs = src.sample_rate
+        if c.kind == "ssvep" and c.sub == "stim" and not self.quality.get("signal_ok_for_calibration", True):
+            c.stim_problem = c.stim_problem or self.quality.get("problem")
         if c.kind == "ssvep":
             label = c.plan[c.idx]
             if c.sub == "cue" and elapsed >= c.CUE_S:
                 c.sub, c.sub_since, c.stim_start = "stim", now, src.total_samples
+                c.stim_dropped = src.status.dropped_samples
+                c.stim_problem = None
                 if self.sim:
                     self.sim.set_gaze(None if label is None else c.freqs[label])
                 self._mark("calib_trial", label=label, freq=None if label is None else c.freqs[label])
@@ -923,7 +991,21 @@ class Engine:
                 s0 = c.stim_start + lat
                 eeg = src.read_range(s0, c.stim_start + int(c.STIM_S * fs))[:, cols].astype(np.float64)
                 pad = src.read_range(max(0, s0 - int(0.5 * fs)), s0)[:, cols].astype(np.float64)
-                c.trials.append(Trial(eeg, label, pad))
+                tr = Trial(eeg, label, pad)
+                if src.status.dropped_samples > c.stim_dropped:
+                    tr.flags.append(f"{src.status.dropped_samples - c.stim_dropped} dropped samples")
+                if c.stim_problem:
+                    tr.flags.append(f"signal problem: {c.stim_problem}")
+                why = trial_quality(tr, fs)
+                if why and c.max_extra > 0:
+                    c.max_extra -= 1
+                    c.rejected += 1
+                    c.plan.append(label)  # re-run this target later
+                    self.log("calibration", f"Trial {c.idx + 1} rejected ({'; '.join(why)}); re-queued")
+                elif why:
+                    c.rejected += 1
+                    self.log("calibration", f"Trial {c.idx + 1} rejected ({'; '.join(why)}); no re-runs left")
+                c.trials.append(tr)  # calibrate() applies the same gate and reports it
                 if self.sim:
                     self.sim.set_gaze(None)
                 c.sub, c.sub_since = "break", now
