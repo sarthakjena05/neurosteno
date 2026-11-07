@@ -31,7 +31,7 @@ button { overflow-wrap: anywhere; }
 :focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
 button:focus:not(:focus-visible) { outline: none; }
 .medical-icon { flex: 0 0 auto; }
-.app-shell { height: 100dvh; display: flex; flex-direction: column; background: var(--color-ink); color: var(--color-text); }
+.app-shell { min-height: 100dvh; display: flex; flex-direction: column; background: var(--color-ink); color: var(--color-text); }
 .app-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 15px 28px; border-bottom: 1px solid var(--color-line); }
 .brand { display: flex; align-items: center; gap: 11px; color: var(--color-text); text-decoration: none; font-size: 21px; font-weight: 700; letter-spacing: -.7px; }
 .brand > svg { width: 38px; height: 38px; color: #2563eb; }
@@ -52,7 +52,7 @@ button:focus:not(:focus-visible) { outline: none; }
 .signal-status svg { width: 17px; height: 17px; }
 .signal-good { color: #15803d; }
 .workspace { display: flex; flex: 1; gap: 16px; min-height: 0; padding: 20px 28px 24px; }
-.patient-workspace { flex: 1; min-width: 0; min-height: 0; }
+.patient-workspace { display: flex; flex: 1; min-width: 0; }
 .operator-drawer { width: 340px; min-width: 300px; flex: 0 0 340px; min-height: 0; }
 .operator-panel { height: 100%; display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--color-line); border-radius: 12px; background: var(--color-panel); padding: 14px; }
 .operator-panel > div:first-child { align-items: flex-start; gap: 10px; }
@@ -76,7 +76,7 @@ button:focus:not(:focus-visible) { outline: none; }
 .demo-toolbar span { margin-right: auto; font-weight: 600; }
 .demo-toolbar small { font-size: 11px; color: var(--color-muted); font-weight: 400; margin-left: 12px; }
 .demo-toolbar button { color: #2563eb; font-size: 12px; }
-.patient-screen { position: relative; display: flex; flex-direction: column; gap: 12px; height: 100%; min-height: 0; border: 1px solid var(--color-line); border-radius: 16px; padding: 22px; background: var(--color-ink); overflow-y: auto; scrollbar-width: thin; }
+.patient-screen { position: relative; display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 10px; border: 1px solid var(--color-line); border-radius: 16px; padding: 18px; background: var(--color-ink); }
 .mode-frame-real, .mode-frame-sim, .mode-frame-replay, .mode-frame-none, .mode-frame-assisted { border-image: none; }
 .mode-frame-assisted { border-color: var(--color-assisted); }
 .patient-header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; font-size: 11px; }
@@ -108,8 +108,8 @@ button:focus:not(:focus-visible) { outline: none; }
 [data-testid="evidence"] { height: 3px; }
 [data-testid="evidence"] + span { font-size: 10px; }
 [data-testid="evidence"] > div { background: #2563eb; }
-.choice-grid { display: grid; flex: 1; gap: 14px; min-height: 180px; grid-auto-rows: minmax(0, 1fr); }
-.choice-card { position: relative; min-width: 0; min-height: 155px; display: flex; flex-direction: column; gap: 10px; text-align: left; border: 1px solid var(--color-line); background: var(--color-panel); border-radius: 12px; padding: 17px 20px; overflow: hidden; color: var(--color-text); }
+.choice-grid { display: grid; flex: 1 0 auto; gap: 16px; grid-auto-rows: minmax(min-content, 1fr); align-items: stretch; }
+.choice-card { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 10px; text-align: left; border: 1px solid var(--color-line); background: var(--color-panel); border-radius: 12px; padding: 17px 20px; overflow: hidden; color: var(--color-text); }
 .choice-card:hover { border-color: #94a3b8; }
 .choice-meta { display: flex; justify-content: space-between; gap: 5px; font-size: 10px; color: var(--color-muted); }
 .choice-meta > span { position: relative; z-index: 10; display: flex; gap: 5px; align-items: center; }
@@ -156,13 +156,13 @@ button:focus:not(:focus-visible) { outline: none; }
 .patient-overlay .decision-card { min-height: 150px; }
 .patient-screen [data-testid="signal-warning"] { font-size: 13px; padding: 9px 12px; border-width: 1px; border-radius: 6px; }
 .patient-screen [data-testid="input-strip"] { font-size: 13px; }
-.patient-fullscreen { height: 100dvh; padding: 20px; background: var(--color-ink); }
+.patient-fullscreen { display: flex; min-height: 100dvh; padding: 20px; background: var(--color-ink); }
 .exit-patient { position: fixed; bottom: 5px; right: 26px; z-index: 50; font-size: 10px; padding: 3px 8px; color: var(--color-muted); background: var(--color-ink); border: 1px solid var(--color-line); border-radius: 4px; }
 .comparison-workspace .patient-workspace { flex: 0 0 38%; }
 .comparison-panel { min-width: 0; flex: 1; min-height: 0; }
 [data-testid="compare-page"] { border-radius: 12px; scrollbar-width: thin; }
 [data-testid="compare-page"] table { font-size: 12px; }
-.comparison-workspace .patient-screen { padding: 16px; gap: 9px; }
+.comparison-workspace .patient-screen { padding: 14px; gap: 7px; }
 .comparison-workspace .choice-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
 .comparison-workspace .choice-content { gap: 10px; }
 .comparison-workspace .choice-icon { padding: 8px; }
@@ -201,15 +201,14 @@ button:focus:not(:focus-visible) { outline: none; }
 .hc .predicted-target { outline: 5px solid #ff0; }
 .hc .choice-icon, .hc .origin-badge, .hc .view-nav button[aria-pressed="true"], .hc .stage-indicator li[aria-current="step"] { color: #fff; background: #000; }
 .hc :focus-visible { outline: 4px solid #ff0; }
-@media (min-width: 1600px) { .workspace { padding: 26px 40px 30px; gap: 22px; } .app-header, .session-status { padding-left: 40px; padding-right: 40px; } .patient-screen { padding: 28px; gap: 16px; } .choice-grid { gap: 18px; } .choice-card { padding: 22px; } .choice-label { font-size: 32px; } }
-@media (max-width: 1400px), (max-height: 800px) { .app-header { padding: 11px 20px; } .session-status { padding: 8px 20px; gap: 6px 16px; } .workspace { padding: 14px 20px 18px; gap: 14px; } .patient-screen { padding: 16px; gap: 9px; } .patient-title { font-size: 30px; } .patient-header { gap: 5px 10px; } .patient-screen .mode-caption { display: none; } .choice-card { min-height: 130px; padding: 13px 16px; gap: 7px; } .choice-label { font-size: 24px; } .choice-content { gap: 14px; } .choice-icon { padding: 10px; } .choice-icon svg { width: 27px; height: 27px; } .header-tools button { padding: 7px 8px; } .header-tools button:not(.operator-toggle) span { display: none; } .patient-actions { padding-top: 9px; } .decision-card { min-height: 78px; padding: 22px 10px 16px; } .group-heading { font-size: 21px; } .group-item { font-size: 20px; } }
+@media (min-width: 1600px) { .workspace { padding: 26px 40px 30px; gap: 22px; } .app-header, .session-status { padding-left: 40px; padding-right: 40px; } .patient-screen { padding: 24px; gap: 12px; } .choice-grid { gap: 18px; } .choice-card { padding: 22px; } .choice-label { font-size: 32px; } }
+@media (max-width: 1400px), (max-height: 800px) { .app-header { padding: 11px 20px; } .session-status { padding: 8px 20px; gap: 6px 16px; } .workspace { padding: 14px 20px 18px; gap: 14px; } .patient-screen { padding: 14px; gap: 7px; } .patient-title { font-size: 30px; } .patient-header { gap: 5px 10px; } .patient-screen .mode-caption { display: none; } .choice-card { padding: 12px 16px; gap: 7px; } .choice-label { font-size: 24px; } .choice-content { gap: 14px; } .choice-icon { padding: 10px; } .choice-icon svg { width: 27px; height: 27px; } .header-tools button { padding: 7px 8px; } .header-tools button:not(.operator-toggle) span { display: none; } .patient-actions { padding-top: 9px; } .decision-card { min-height: 78px; padding: 22px 10px 16px; } .group-heading { font-size: 21px; } .group-item { font-size: 20px; } }
 @media (max-width: 1100px) { .app-header { gap: 8px; } .brand { font-size: 18px; } .brand small { font-size: 8px; } .brand > svg { width: 30px; height: 30px; } .view-nav button { padding: 6px 7px; font-size: 11px; } .with-controls:not(.comparison-workspace) .operator-drawer { width: 305px; flex-basis: 305px; } .with-controls .choice-content { flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; } .with-controls .choice-label { font-size: 22px; } }
-@media (max-width: 800px) { .app-shell { height: auto; min-height: 100dvh; } .app-header { padding: 12px; } .view-nav { order: 3; width: 100%; justify-content: center; } .session-status { padding: 10px 12px; gap: 8px 14px; } .signal-status { margin-left: 0; } .workspace { padding: 12px; flex-direction: column; } .patient-screen { min-height: 650px; } .choice-grid { grid-auto-rows: minmax(140px, auto); } .operator-drawer { width: 100%; flex-basis: auto; height: 65vh; } .comparison-workspace .patient-workspace { flex-basis: auto; } .comparison-panel { height: 75vh; flex: none; } .comparison-workspace.with-controls .operator-drawer { position: static; } .prototype-label { margin-left: 0; } .demo-toolbar { padding: 8px 12px; flex-wrap: wrap; } .demo-toolbar small { display: none; } }
+@media (max-width: 800px) { .app-shell { height: auto; min-height: 100dvh; } .app-header { padding: 12px; } .view-nav { order: 3; width: 100%; justify-content: center; } .session-status { padding: 10px 12px; gap: 8px 14px; } .signal-status { margin-left: 0; } .workspace { padding: 12px; flex-direction: column; } .patient-screen { min-height: 0; } .choice-grid { grid-auto-rows: minmax(min-content, 1fr); } .operator-drawer { width: 100%; flex-basis: auto; height: 65vh; } .comparison-workspace .patient-workspace { flex-basis: auto; } .comparison-panel { height: 75vh; flex: none; } .comparison-workspace.with-controls .operator-drawer { position: static; } .prototype-label { margin-left: 0; } .demo-toolbar { padding: 8px 12px; flex-wrap: wrap; } .demo-toolbar small { display: none; } }
 @media (max-width: 480px) { .choice-grid { grid-template-columns: 1fr; } .choice-label { font-size: 24px; } .patient-overlay { padding: 18px; } .patient-actions { gap: 5px; } .patient-actions button { padding: 7px; } .brand small { display: none; } }
 @media (min-width: 801px) and (max-height: 800px) {
   .patient-screen:has([data-testid="confirm-bar"]) .routing-strip,
   .patient-screen:has([data-testid="confirm-bar"]) .stage-indicator { display: none; }
-  .patient-screen:has([data-testid="confirm-bar"]) .choice-card { min-height: 105px; }
   .patient-screen:has([data-testid="confirm-bar"]) .choice-icon { padding: 6px; }
   .patient-screen:has([data-testid="confirm-bar"]) .choice-icon svg { width: 22px; height: 22px; }
   .patient-screen:has([data-testid="confirm-bar"]) .choice-label { font-size: 22px; }
@@ -230,3 +229,28 @@ button:focus:not(:focus-visible) { outline: none; }
 [data-testid="alpha-overlay"][data-sub="eyes_closed"] .text-zinc-300 { color: #cbd5e1; }
 .hc [class*="bg-"], .hc [class*="text-"] { color: #fff; background-color: #000; }
 .hc [aria-pressed="true"], .hc [aria-selected="true"] { outline: 2px solid #ff0; outline-offset: -2px; }
+
+@media (min-width: 801px) {
+  .choice-grid[data-count="5"] { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .choice-grid[data-count="5"] > .choice-card { grid-column: span 2; }
+  .choice-grid[data-count="5"] > .choice-card:nth-child(n + 4) { grid-column: span 3; }
+  .choice-grid[data-count="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .choice-grid[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app-header, .session-status, .demo-toolbar { flex-shrink: 0; }
+  .patient-screen > :not(.choice-grid):not(.patient-overlay) { flex-shrink: 0; }
+  .operator-drawer { position: relative; }
+  .operator-panel { position: absolute; inset: 0; }
+  .comparison-panel { max-height: calc(100dvh - 170px); overflow-y: auto; }
+  .comparison-panel [data-testid="compare-page"] { height: auto; overflow: visible; }
+}
+@media (min-width: 801px) and (max-height: 800px) {
+  .patient-prompt { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .phase-instruction { max-width: 55%; text-align: right; }
+}
+@media (min-width: 801px) and (max-height: 720px) {
+  .app-header { padding-top: 8px; padding-bottom: 8px; }
+  .workspace { padding-top: 10px; padding-bottom: 10px; }
+  .demo-toolbar { padding-top: 5px; padding-bottom: 5px; }
+  .patient-screen { padding: 12px; gap: 6px; }
+  .patient-screen .stage-indicator { display: none; }
+}
