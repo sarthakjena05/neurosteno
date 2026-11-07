@@ -136,7 +136,7 @@ describe('judge comparison view', () => {
     await waitFor(() => screen.getByTestId('why-targets-bars'))
     expect(screen.getByTestId('why-targets-bars')).toHaveTextContent('2 targets · recommended')
     expect(screen.getByTestId('targets-verdict')).toHaveTextContent('model recommends 2 · in use 5')
-    expect(screen.getByTestId('why-candidates')).toHaveTextContent('✓ shortcut Turn me left')
+    expect(screen.getByTestId('why-candidates')).toHaveTextContent('shortcut Turn me left')
     const active = within(screen.getByTestId('flow')).getAllByRole('listitem').filter((li) => li.dataset.active === 'true')
     expect(active).toHaveLength(1)
     expect(active[0]).toHaveTextContent('Highlight, same screen')
@@ -170,7 +170,7 @@ describe('backend v1.3 integration (B1/B2/B3)', () => {
     withV13()
     render(<ComparePage s={mockState()} ab={noAB} />)
     await waitFor(() => screen.getByTestId('path-adaptive'))
-    expect(screen.getByTestId('path-adaptive')).toHaveTextContent('★ Turn me left')
+    expect(screen.getByTestId('path-adaptive').querySelector('.bg-neuro')).toHaveTextContent('Turn me left')
     expect(screen.getByTestId('path-static')).toHaveTextContent('Comfort')
   })
 
@@ -281,7 +281,7 @@ describe('live A/B demonstration', () => {
       ] } }
     render(<ComparePage s={mockState({ routing: plan() })} ab={ab} />)
     await waitFor(() => screen.getByTestId('ab-conditions'))
-    expect(screen.getByTestId('ab-conditions')).toHaveTextContent('identical except routing ✓')
+    expect(screen.getByTestId('ab-conditions')).toHaveTextContent('identical except routing')
     expect(screen.getByTestId('live-mismatch-adaptive')).toHaveTextContent('Differs from the EXACT seed-profile count (5)')
     expect(screen.queryByTestId('live-mismatch-static')).toBeNull()
   })

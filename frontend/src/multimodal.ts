@@ -81,11 +81,11 @@ export interface InputBackend {
 }
 
 export const METHOD_INFO: Record<MethodKey | 'eeg_fallback', { label: string; purpose: string; icon: string }> = {
-  eeg_ssvep: { label: 'EEG target selection', purpose: 'look at a flickering choice', icon: '👁' },
+  eeg_ssvep: { label: 'EEG target selection', purpose: 'look at a flickering choice', icon: '' },
   nod_yes: { label: 'Head nod', purpose: 'YES', icon: '↕' },
   shake_no: { label: 'Head shake', purpose: 'NO', icon: '↔' },
   tilt_nav: { label: 'Head tilt', purpose: 'navigate (optional)', icon: '⤢' },
-  eeg_fallback: { label: 'EEG-only fallback', purpose: 'gesture not usable now', icon: '👁' },
+  eeg_fallback: { label: 'EEG-only fallback', purpose: 'gesture not usable now', icon: '' },
 }
 export const MODE_INFO: Record<InputMode, { label: string; text: string }> = {
   eeg_only: { label: 'EEG-only', text: 'Every choice and every YES/NO by brain signal (SSVEP). Works with no movement at all.' },
@@ -98,8 +98,8 @@ export const STATUS_INFO: Record<MethodStatus, { text: string; cls: string; mark
   unavailable: { text: 'not available', cls: 'bg-zinc-800 text-muted', mark: '–' },
   not_calibrated: { text: 'not calibrated', cls: 'bg-amber-900', mark: '?' },
   calibrating: { text: 'calibrating…', cls: 'bg-sky-800', mark: '…' },
-  calibrated: { text: 'calibrated', cls: 'bg-green-900', mark: '✓' },
-  unreliable: { text: 'unreliable for this patient', cls: 'bg-red-950', mark: '✗' },
+  calibrated: { text: 'calibrated', cls: 'bg-green-900', mark: '' },
+  unreliable: { text: 'unreliable for this patient', cls: 'bg-red-950', mark: '' },
   disabled: { text: 'disabled by caregiver', cls: 'bg-zinc-700', mark: '⏻' },
 }
 

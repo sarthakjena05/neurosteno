@@ -108,7 +108,7 @@ export function PolicyCard({ vm }: { vm: InputsVM }) {
   if (!p) {
     return (
       <p className="text-sm" data-testid="policy-card">
-        <b>Selected input: 👁 EEG target selection</b>{' '}
+        <b>Selected input:  EEG target selection</b>{' '}
         <span className="text-muted">{vm.provenance === 'eeg_only_default' ? '(EEG-only: no optimized input policy is published by the backend yet)' : '(no policy decision for this moment)'}</span>
       </p>
     )
@@ -123,13 +123,13 @@ export function PolicyCard({ vm }: { vm: InputsVM }) {
           <tr key={o.method} className={`border-t border-line ${o.method === p.selected ? 'font-bold' : ''}`}>
             <td>{METHOD_INFO[o.method].label}</td>
             <td>{p.action === 'review' && !GESTURE_FINAL_CONFIRM_ENABLED && o.method !== 'eeg_ssvep' && o.method !== 'eeg_fallback'
-              ? <span data-testid="final-gesture-blocked" title="Final SEND stays a separate EEG confirmation until real-world false-activation testing supports gestures">✗ not for final SEND</span>
-              : o.allowed ? '✓' : '✗'}</td>
+              ? <span data-testid="final-gesture-blocked" title="Final SEND stays a separate EEG confirmation until real-world false-activation testing supports gestures"> not for final SEND</span>
+              : o.allowed ? '' : ''}</td>
             <td>{o.expected_latency_s != null ? `${o.expected_latency_s} s` : '-'}</td><td>{o.confidence != null ? `${Math.round(o.confidence * 100)}%` : '-'}</td><td>{o.reason}</td>
           </tr>
         ))}</tbody>
       </table>
-      {p.constraints.length > 0 && <ul className="list-disc pl-4 text-xs">{p.constraints.map((c) => <li key={c}>🔒 {c}</li>)}</ul>}
+      {p.constraints.length > 0 && <ul className="list-disc pl-4 text-xs">{p.constraints.map((c) => <li key={c}> {c}</li>)}</ul>}
     </div>
   )
 }
@@ -147,7 +147,7 @@ export function InputStrip({ vm, action }: { vm: InputsVM; action: 'choose' | 'c
     <div className="flex flex-col gap-2" data-testid="input-strip">
       {vm.abstain && (
         <div role="status" data-testid="abstain-banner" className="rounded-2xl border-4 border-amber-400 bg-amber-950 px-4 py-2 text-xl font-bold">
-          ⏸ {vm.abstain.type === 'conflict' ? 'Signals disagreed' : 'Head movement disturbed the brain signal'}: nothing was selected.
+           {vm.abstain.type === 'conflict' ? 'Signals disagreed' : 'Head movement disturbed the brain signal'}: nothing was selected.
           <span className="block text-base font-normal">{vm.abstain.text} Please try again.</span>
         </div>
       )}
@@ -157,7 +157,7 @@ export function InputStrip({ vm, action }: { vm: InputsVM; action: 'choose' | 'c
       {showAnswer && (
         <p className="flex flex-wrap items-center gap-2 text-lg" data-testid="answer-with">
           <span className="text-muted">Answer with:</span>
-          <span className="rounded-lg bg-panel2 px-2 py-0.5 font-bold">👁 look at YES / NO</span>
+          <span className="rounded-lg bg-panel2 px-2 py-0.5 font-bold"> look at YES / NO</span>
           {gestures.includes('nod_yes') && <span className="rounded-lg bg-green-900 px-2 py-0.5 font-bold">↕ nod = YES</span>}
           {gestures.includes('shake_no') && <span className="rounded-lg bg-red-900 px-2 py-0.5 font-bold">↔ shake = NO</span>}
           {action === 'review' && <span className="text-sm text-muted" data-testid="final-eeg-only">Final message: look at SEND. Head gestures are not used to send.</span>}
@@ -166,7 +166,7 @@ export function InputStrip({ vm, action }: { vm: InputsVM; action: 'choose' | 'c
       {g && anyGestureActive && (
         <p className="text-base" data-testid="last-gesture">
           {g.accepted
-            ? <>✓ {g.gesture} detected → <b>{g.used_for?.toUpperCase() ?? 'noted'}</b> ({Math.round(g.confidence * 100)}%)</>
+            ? <> {g.gesture} detected → <b>{g.used_for?.toUpperCase() ?? 'noted'}</b> ({Math.round(g.confidence * 100)}%)</>
             : <>· {g.gesture} seen but <b>not used</b>: {g.reason}</>}
         </p>
       )}
@@ -201,7 +201,7 @@ export function GestureCalibrationView({ cal, speak = true }: { cal: GestureCali
         : <p className={`text-5xl font-black ${cal.sub === 'cue' ? 'text-sky-200' : ''}`}>{t.cue}</p>}
       {cal.sub === 'feedback' && lt && (
         <p className={`text-4xl font-black ${lt.detected ? 'text-green-300' : 'text-zinc-300'}`}>
-          {lt.detected ? `✓ ${lt.seen ?? cal.gesture} detected` : 'Not detected. That’s OK.'}
+          {lt.detected ? ` ${lt.seen ?? cal.gesture} detected` : 'Not detected. That’s OK.'}
         </p>
       )}
       {left != null && cal.sub !== 'computing' && <p className="text-xl text-muted">{left} s</p>}

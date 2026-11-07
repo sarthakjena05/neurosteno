@@ -63,7 +63,7 @@ function Path({ path, arm }: { path?: { label: string; kind?: string }[]; arm: A
         <li key={i} className="flex items-center gap-1">
           {i > 0 && <span aria-hidden className="text-muted">›</span>}
           <span className={`rounded px-1.5 py-0.5 ${p.kind === 'shortcut' ? 'bg-neuro font-bold text-white' : p.kind === 'urgent_route' ? 'bg-red-700' : p.kind === 'back' ? 'bg-zinc-700' : 'bg-panel2'}`}>
-            {p.kind === 'shortcut' ? '★ ' : p.kind === 'urgent_route' ? '⚠ ' : p.kind === 'back' ? '↩ ' : ''}{p.label}
+            {p.kind === 'shortcut' ? ' ' : p.kind === 'urgent_route' ? ' ' : p.kind === 'back' ? '↩ ' : ''}{p.label}
           </span>
         </li>
       ))}
@@ -141,7 +141,7 @@ function LiveLine({ r, exact }: { r: ArmResult; exact: number }) {
     <p className="flex flex-wrap items-center gap-2 text-sm" data-testid={`live-${r.arm}`}>
       <Tag tag="DEMO" />
       <span>1 run: <b>{r.selections ?? '?'}</b> selections in <b>{r.completion_s != null ? fmtS(r.completion_s) : '?'}</b></span>
-      <span>{r.correct === true ? '✓ correct message' : r.correct === false ? '✗ wrong message' : 'unscored'}</span>
+      <span>{r.correct === true ? ' correct message' : r.correct === false ? ' wrong message' : 'unscored'}</span>
       {(r.rejected ?? 0) > 0 && <span className="text-muted">{r.rejected} wrong highlight(s) rejected</span>}
       {r.selections != null && r.selections !== exact && (
         <span className="w-full text-xs text-amber-300" data-testid={`live-mismatch-${r.arm}`}>
@@ -244,13 +244,13 @@ function WhyPhrases({ s, profileWanted }: { s: State; profileWanted: string }) {
           <ul className="flex flex-col gap-1 text-sm" data-testid="why-candidates">
             {p.candidates.slice(0, 5).map((c) => (
               <li key={c.node_id} className={`rounded-lg px-2 py-1 ${c.included ? 'bg-sky-950' : 'bg-panel2'}`}>
-                <b>{c.included ? '✓ shortcut' : '✗ not added'}</b> {c.title ?? c.node_id}
+                <b>{c.included ? ' shortcut' : ' not added'}</b> {c.title ?? c.node_id}
                 {c.delta_selections !== undefined && <span className="text-muted"> · ΔE[selections] {c.delta_selections.toFixed(2)}</span>}
                 <span className="block text-xs text-muted">{c.why}{c.reasons.length ? ` · ${c.reasons.join('; ')}` : ''}</span>
               </li>
             ))}
           </ul>
-          {p.urgent.length > 0 && <p className="text-xs">⚠ {p.urgent.length} urgent routes always visible (e.g. suction, short of breath, nurse now).</p>}
+          {p.urgent.length > 0 && <p className="text-xs"> {p.urgent.length} urgent routes always visible (e.g. suction, short of breath, nurse now).</p>}
         </>
       )}
     </section>
@@ -335,7 +335,7 @@ function Uncertainty({ s }: { s: State }) {
 function CondRow({ label, a, b }: { label: string; a: unknown; b: unknown }) {
   const same = JSON.stringify(a) === JSON.stringify(b)
   const f = (v: unknown) => (Array.isArray(v) ? (v.length ? v.join(', ') : 'none') : v == null ? '-' : String(v))
-  return <tr className="border-t border-line"><th scope="row" className="pr-2 text-left font-normal text-muted">{label}</th><td className="px-2">{f(a)}</td><td className="px-2">{f(b)}</td><td>{label === 'routing' ? '(compared)' : same ? '✓' : '✗ differs'}</td></tr>
+  return <tr className="border-t border-line"><th scope="row" className="pr-2 text-left font-normal text-muted">{label}</th><td className="px-2">{f(a)}</td><td className="px-2">{f(b)}</td><td>{label === 'routing' ? '(compared)' : same ? '' : ' differs'}</td></tr>
 }
 
 function LiveAB({ s, node, profile, n, ab }: { s: State; node: string; profile: string; n: number; ab: LiveABApi }) {
@@ -380,7 +380,7 @@ function LiveAB({ s, node, profile, n, ab }: { s: State; node: string; profile: 
         <table className="text-xs tabular-nums" data-testid="ab-conditions">
           <caption className="text-left">
             Conditions recorded at the start of each arm:{' '}
-            {match?.ok ? <b className="text-green-300">identical except routing ✓</b> : <b className="text-red-300">NOT comparable: {match?.differences.join(', ')}</b>}
+            {match?.ok ? <b className="text-green-300">identical except routing </b> : <b className="text-red-300">NOT comparable: {match?.differences.join(', ')}</b>}
           </caption>
           <thead><tr><th /><th className="px-2 text-left">NeuroSteno</th><th className="px-2 text-left">Fixed menu</th><th /></tr></thead>
           <tbody>
@@ -527,7 +527,7 @@ function SafetyInvariant({ s }: { s: State }) {
   const blocked = inv.blocked_unconfirmed_send_attempts
   return (
     <p className="flex flex-wrap items-center gap-2 text-sm" data-testid="safety-invariant">
-      <span>🔒 <b>Enforced by the engine:</b> a message cannot be sent without a decoded final YES (guaranteed by code, not a measurement).</span>
+      <span> <b>Enforced by the engine:</b> a message cannot be sent without a decoded final YES (guaranteed by code, not a measurement).</span>
       {blocked != null && (
         <span className="flex items-center gap-2"><Tag tag="MEASURED" origin={s.mode.origin} /> unconfirmed send attempts blocked since the backend started: <b>{blocked}</b></span>
       )}

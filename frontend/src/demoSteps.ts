@@ -60,7 +60,7 @@ export const DEMO_STEPS: DemoStep[] = [
   },
   {
     id: 'context', title: 'Context: NeuroRoute', budget_s: 40,
-    say: ['Jordan (mobility): ★ suggestions and “NeuroRoute:” reasons appear on cards; the strip shows expected selections vs. the static menu.', 'Compute A/B/C: “Turn me left” goes 11 → 5 for Jordan but is unchanged for a new patient. Sam: suction-now 8 → 6 through the always-on urgent route.'],
+    say: ['Jordan (mobility): Suggested phrases and “NeuroRoute:” reasons appear on cards; the strip shows expected selections vs. the static menu.', 'Compute A/B/C: “Turn me left” goes 11 → 5 for Jordan but is unchanged for a new patient. Sam: suction-now 8 → 6 through the always-on urgent route.'],
     actions: [
       { label: 'Profile: Jordan', run: sim('set_profile', { id: 'mobility' }) },
       { label: 'Profile: Sam', run: sim('set_profile', { id: 'respiratory' }) },

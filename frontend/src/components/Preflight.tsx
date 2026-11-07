@@ -11,10 +11,10 @@ import type { State } from '../types'
 
 
 const MARK: Record<Level, { sym: string; cls: string; text: string }> = {
-  ok: { sym: '✓', cls: 'text-green-300', text: 'ok' },
+  ok: { sym: '', cls: 'text-green-300', text: 'ok' },
   warn: { sym: '!', cls: 'text-amber-300', text: 'warning' },
-  fail: { sym: '✗', cls: 'text-red-300', text: 'problem' },
-  manual: { sym: '☐', cls: 'text-sky-300', text: 'manual' },
+  fail: { sym: '', cls: 'text-red-300', text: 'problem' },
+  manual: { sym: '', cls: 'text-sky-300', text: 'manual' },
 }
 
 
