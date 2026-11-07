@@ -1,0 +1,11 @@
+# Python 3.12 (UnicornPy API 4.0 imports under CPython 3.12 via the stable ABI)
+fastapi>=0.110
+uvicorn[standard]>=0.29
+numpy>=1.26
+scipy>=1.12
+pydantic>=2.6
+# tests
+pytest>=8
+httpx>=0.27
+# UnicornPy is NOT on PyPI: it ships with Unicorn Suite Hybrid Black
+# (Documents\gtec\Unicorn Suite\Hybrid Black\Unicorn Python\Lib). Override with UNICORN_PY_DIR.
