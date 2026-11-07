@@ -19,3 +19,5 @@ build/
 
 backend/recordings/
 *.npz
+
+backend/data/runtime/
