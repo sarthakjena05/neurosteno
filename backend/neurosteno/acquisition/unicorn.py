@@ -133,6 +133,64 @@ def classify_channel(name: str) -> str:
     return "other"
 
 
+# Units the Unicorn reports for its motion channels (confirmed on UN-2024.09.36, 2026-11-07:
+# "Accelerometer X/Y/Z" in g, "Gyroscope X/Y/Z" in deg/s, stationary accel norm 1.03 g).
+EXPECTED_UNITS = {"eeg": "µV", "accel": "g", "gyro": "deg/s"}
+
+
+def normalize_unit(unit: str) -> str:
+    """UnicornPy returns UTF-8 bytes that arrive decoded as Latin-1 ("Âµ" for "µ"). Repair that."""
+    u = str(unit or "")
+    try:
+        fixed = u.encode("latin-1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        fixed = u
+    return fixed.replace("\u03bc", "µ")
+
+
+def verify_channel_map(channels: list[ChannelInfo], U=None) -> dict:
+    """Check the name-derived channel roles against the library's own layout constants
+    (UnicornPy.EEGConfigIndex / AccelerometerConfigIndex / GyroscopeConfigIndex ...) and the
+    expected units. Missing motion channels are reported, not treated as an error: EEG-only
+    operation never needs them."""
+    checks = []
+
+    def idx(kind):
+        return [c.index for c in channels if c.kind == kind]
+
+    expect = {}
+    if U is not None:
+        try:
+            expect = {
+                "eeg": list(range(U.EEGConfigIndex, U.EEGConfigIndex + U.EEGChannelsCount)),
+                "accel": list(range(U.AccelerometerConfigIndex, U.AccelerometerConfigIndex + U.AccelerometerChannelsCount)),
+                "gyro": list(range(U.GyroscopeConfigIndex, U.GyroscopeConfigIndex + U.GyroscopeChannelsCount)),
+                "battery": [U.BatteryConfigIndex], "counter": [U.CounterConfigIndex],
+                "validation": [U.ValidationConfigIndex],
+            }
+        except AttributeError:
+            expect = {}
+    for kind in ("eeg", "accel", "gyro", "battery", "counter", "validation"):
+        got = idx(kind)
+        row = {"kind": kind, "indices": got}
+        if kind in expect:
+            row["library_indices"] = expect[kind]
+            row["ok"] = got == expect[kind]
+        else:
+            row["ok"] = bool(got) if kind == "eeg" else None
+        if kind in EXPECTED_UNITS and got:
+            units = sorted({channels[i].unit for i in got})
+            row["units"] = units
+            row["unit_ok"] = units == [EXPECTED_UNITS[kind]]
+        checks.append(row)
+    imu = len(idx("accel")) == 3 and len(idx("gyro")) == 3
+    ok = all(r["ok"] is not False and r.get("unit_ok", True) for r in checks if r["kind"] in ("eeg", "accel", "gyro"))
+    return {"verified": bool(ok) and bool(expect), "imu_present": imu, "checks": checks,
+            "note": ("Channel roles come from the names the device reports; they match the UnicornPy layout "
+                     "constants." if ok and expect else
+                     "Channel roles come from the names the device reports; layout check failed or unavailable.")}
+
+
 def discover(only_paired: bool = True) -> list[str]:
     U = load_unicornpy()
     try:
@@ -187,13 +245,14 @@ class UnicornSource(EEGSource):
             if kind == "eeg":
                 label = labels[eeg_i] if eeg_i < len(labels) else ch.Name
                 eeg_i += 1
-            channels.append(ChannelInfo(index=i, name=ch.Name, kind=kind, unit=ch.Unit, label=label))
+            channels.append(ChannelInfo(index=i, name=ch.Name, kind=kind, unit=normalize_unit(ch.Unit), label=label))
         if eeg_i == 0:
             self._close_device()
             raise AcquisitionError("Unicorn configuration contains no enabled EEG channels.", "no_eeg")
 
         super().__init__(float(self._U.SamplingRate), channels)
         self.n_acquired = n_acq
+        self.status.extra["channel_map"] = verify_channel_map(channels, self._U)
         self.status.connected = True
         self.status.device = serial
         self.status.message = f"Connected to {serial} ({n_acq} channels, {eeg_i} EEG, {self.sample_rate:.0f} Hz)"

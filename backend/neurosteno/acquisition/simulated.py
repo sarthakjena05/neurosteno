@@ -9,6 +9,11 @@ occipital/parietal channels; whether that is decoded correctly depends on the de
 Injected mistakes are produced by making the virtual patient's EEG respond to a different
 target, which is how a real misclassification looks to the system.
 
+Head motion (accelerometer + gyroscope, and motion artifacts in the EEG) comes from
+motion_sim.HeadMotion with its own random generator, so the EEG of a given seed is unchanged
+by the motion model. The default motion profile "steady" has no incidental movement and no
+EEG coupling; the virtual patient can still nod / shake / tilt on request.
+
 All values are synthetic. Status metrics (battery, dropped samples) are labelled simulated.
 """
 
@@ -20,6 +25,7 @@ import numpy as np
 from scipy.signal import lfilter
 
 from .base import ChannelInfo, EEGSource, SourceKind
+from .motion_sim import PROFILES as MOTION_PROFILES, HeadMotion
 from .unicorn import DEFAULT_EEG_LABELS
 
 FS = 250.0
@@ -79,6 +85,7 @@ class SimulatedSource(EEGSource):
         self._gaze_onset_sample = 0
         self._blinks: list[tuple[int, float, float]] = []  # (onset_sample, amplitude_uv, duration_s)
         self._drift_phase = self.rng.uniform(0, 2 * np.pi, len(self._labels))
+        self.head = HeadMotion("steady", seed=seed, fs=FS)
 
     def _calibrate_pink_gain(self) -> float:
         w = np.random.default_rng(0).standard_normal(20000)
@@ -106,6 +113,17 @@ class SimulatedSource(EEGSource):
         if hz != self.gaze_hz:
             self.gaze_hz = hz
             self._gaze_onset_sample = self._generated
+
+    def set_motion_profile(self, name: str) -> None:
+        if name not in MOTION_PROFILES:
+            raise ValueError(f"unknown motion profile {name}; one of {sorted(MOTION_PROFILES)}")
+        self.head.set_profile(name)
+
+    def perform_gesture(self, kind: str, reaction: bool = True) -> dict:
+        """Virtual patient attempts a head gesture now (nod | shake | tilt). Synthetic."""
+        if kind not in ("nod", "shake", "tilt"):
+            raise ValueError("gesture must be nod, shake or tilt")
+        return self.head.perform(kind, self._generated / self.sample_rate, reaction)
 
     def inject_blink(self, deliberate: bool = True) -> None:
         amp = self.rng.uniform(140, 190) if deliberate else self.rng.uniform(35, 60)
@@ -181,15 +199,22 @@ class SimulatedSource(EEGSource):
             if lbl in self.bad_channels:
                 eeg[:, j] = (self.rng.standard_normal(n) * 120 + 400 * np.sin(2 * np.pi * 0.7 * t + self._drift_phase[j]))
 
+        # Head motion: IMU channels + EEG motion artifact (own RNG, see module docstring)
+        mot = self.head.generate(t)
+        eeg += self.head.eeg_artifact(mot["speed_dps"], n_eeg)
+
         out[:, self._eeg_idx] = eeg
-        # Motion sensors: small synthetic noise; battery left at 0 and flagged as not real.
+        acc_i = [c.index for c in self.channels if c.kind == "accel"]
+        gyr_i = [c.index for c in self.channels if c.kind == "gyro"]
         for c in self.channels:
             if c.kind in ("accel", "gyro"):
-                out[:, c.index] = self.rng.standard_normal(n) * (0.005 if c.kind == "accel" else 0.3)
+                self.rng.standard_normal(n)  # keep the EEG random stream identical to earlier versions
             elif c.kind == "counter":
                 out[:, c.index] = np.arange(self._counter + 1, self._counter + 1 + n)
             elif c.kind == "validation":
                 out[:, c.index] = 1.0
+        out[:, acc_i] = mot["accel"]
+        out[:, gyr_i] = mot["gyro"]
         self._counter += n
         self._generated += n
         return out.astype(np.float32)

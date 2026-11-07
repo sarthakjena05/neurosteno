@@ -47,6 +47,8 @@ from .signal.fbcca import DynamicStopper, FBCCAConfig, StoppingConfig
 from .signal.electrodes import (ElectrodeConfig, alpha_reactivity, channel_contacts, channel_spectra,
                                 summarize_contacts)
 from .signal.quality import QualityConfig, assess_channels, common_mode
+from .interaction import InteractionMixin
+from .signal.gestures import GestureConfig
 
 log = logging.getLogger(__name__)
 
@@ -81,11 +83,12 @@ class Attempt:
     started: float
     mistake: bool = False
     last: dict | None = None
+    motion_restarts: int = 0
 
 
 @dataclass
 class CalibSession:
-    kind: str  # "ssvep" | "blink" | "alpha"
+    kind: str  # "ssvep" | "blink" | "alpha" | "gesture"
     n: int = 2
     freqs: list[float] = field(default_factory=list)
     plan: list = field(default_factory=list)  # ssvep: label|None per trial ; blink: "relax" then "blink" cues
@@ -111,7 +114,7 @@ class CalibSession:
     EYES_S = 10.0
 
 
-class Engine:
+class Engine(InteractionMixin):
     def __init__(self, catalog: Catalog, store: ProfileStore, cfg: EngineConfig | None = None,
                  clock=time.monotonic):
         self.catalog = catalog
@@ -169,6 +172,7 @@ class Engine:
         self.sim_autopilot: str | None = None
         self.sim_pending_mistake = False
         self.version = 0
+        self._init_interaction()
         self.profile: Profile
         self.set_profile("new-patient")
 
@@ -302,6 +306,7 @@ class Engine:
     def _load_calibration(self) -> None:
         self.calib_results = {}
         self.stopping = {}
+        self.gesture_cfg = GestureConfig()
         p = self._calib_path()
         if p.exists():
             data = json.loads(p.read_text(encoding="utf-8"))
@@ -309,6 +314,8 @@ class Engine:
                 self.calib_results[key] = res
                 if key.startswith("ssvep_") and "stopping" in res:
                     self.stopping[int(key.split("_")[1])] = StoppingConfig.from_dict(res["stopping"])
+                if key == "gesture":
+                    self._load_gesture_calibration(res)
                 if key == "blink" and res.get("separable"):
                     self.blink_cfg.threshold_uv = res["threshold_uv"]
                     self.blink_cfg.calibrated = True
@@ -376,11 +383,13 @@ class Engine:
         self.consecutive_abstains = 0
         if src is None:
             self.comm = {"available": False, "reason": "No EEG source selected", "needs_caregiver": False}
+            self._interaction_on_source(None)
             self._enter(Phase.OFF)
             return
         src.start()
         self.blink_detector = OnlineBlinkDetector(self.blink_cfg, src.sample_rate)
         self.blink_detector.processed_until = src.total_samples
+        self._interaction_on_source(src)
         if self.cfg.n_choices not in self.allowed_choices():
             self.cfg.n_choices = 2
         self.task = None
@@ -406,6 +415,7 @@ class Engine:
             self._plan_future = None
         if self._plan_pending is not None:
             self._apply_plan()
+        self._poll_policy()
         src = self.source
         if src is not None:
             src.poll()
@@ -414,6 +424,7 @@ class Engine:
             if now - self._last_quality >= 0.25:
                 self._update_quality(now)
                 self._update_blinks()  # 4 Hz is plenty; the detector looks back over 3 s
+                self._update_imu(now)  # motion channels + optional gestures (no-op without IMU)
             if now - self._last_electrodes >= 1.0:
                 self._update_electrodes(now)
         if self.emergency:
@@ -594,6 +605,8 @@ class Engine:
         self.sim_gaze_key = None
         if kind == "choose":
             self._enter(Phase.EVIDENCE_COLLECTION)
+        elif kind == "confirm":
+            self._arm_gesture_window(self.attempt)  # optional hybrid YES/NO; EEG keeps running in parallel
         self._mark("attempt_start", kind=kind, targets=[t.__dict__ for t in targets])
         self._update_sim_gaze()
 
@@ -607,6 +620,8 @@ class Engine:
         avail_s = (src.total_samples - start) / fs
         st = a.stopper.stopping
         if not a.stopper.due(avail_s):
+            return
+        if self._motion_restart(a):  # head movement inside the EEG window: collect fresh evidence
             return
         win_s = min(st.max_window_s, st.min_window_s + np.floor((avail_s - st.min_window_s) / st.step_s + 1e-9) * st.step_s)
         n = int(round(win_s * fs))
@@ -656,6 +671,7 @@ class Engine:
             self.attempt = None
             self._start_attempt("confirm")
         elif a.kind == "confirm":
+            self._gesture_window_eeg_decided(t.key == "yes")
             if t.key == "yes":
                 self.log("decision", "Patient confirmed the highlighted choice")
                 self._accept(provisional=False)
@@ -706,6 +722,7 @@ class Engine:
         """Live evidence for signal-adaptive n: the patient's own YES/NO on a highlight."""
         self.tracker.add(self.cfg.n_choices, kind, decision_s)
         self.adapt_since_switch += 1
+        self._note_outcome(kind, decision_s)
 
     def _accept(self, provisional: bool, gated: bool = False) -> None:
         h = self.highlight or {}
@@ -982,6 +999,9 @@ class Engine:
             return
         elapsed = now - c.sub_since
         fs = src.sample_rate
+        if c.kind == "gesture":
+            self._tick_gesture_calibration(now)
+            return
         if c.kind == "ssvep" and c.sub == "stim" and not self.quality.get("signal_ok_for_calibration", True):
             c.stim_problem = c.stim_problem or self.quality.get("problem")
         if c.kind == "ssvep":
@@ -1083,6 +1103,9 @@ class Engine:
             self.log("calibration", f"{c.n}-target calibration ({res['origin']} data): accepted-trial accuracy "
                      f"{est['accuracy_of_accepted']}, abstention {est['abstention_rate']}, "
                      f"mean {est['mean_decision_s']} s, supported={res['supported']}. {res['caveat']}")
+        elif c.kind == "gesture":
+            key = "gesture"
+            self._finish_gesture_calibration(res)
         elif c.kind == "alpha":
             key = "alpha"
             if res["origin"] != "real":
@@ -1109,6 +1132,7 @@ class Engine:
         self.calib_results[key] = res
         self._save_calibration()
         self.request_plan()  # verification + target-count recommendation depend on reliability
+        self.request_policy()
         self.calib = None
         self._enter_comm_unavailable("Re-checking signal after calibration", needs_caregiver=False)
 

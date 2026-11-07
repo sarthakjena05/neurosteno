@@ -179,6 +179,26 @@ def benchmark(sessions: bool = False):
     return {"available": True, **data}
 
 
+@app.get("/api/benchmark/multimodal")
+def benchmark_multimodal(sessions: bool = False):
+    """SIMULATED multimodal benchmark (scripts/run_multimodal_benchmark.py)."""
+    p = Path(__file__).resolve().parents[1] / "reports" / "multimodal_results.json"
+    if not p.exists():
+        return {"available": False}
+    data = json.loads(p.read_text(encoding="utf-8"))
+    if not sessions:
+        data.pop("sessions", None)
+    return {"available": True, **data}
+
+
+@app.get("/api/interaction")
+def interaction():
+    """Capability profile + full policy decision (all candidates)."""
+    cap = engine.capability().to_dict()
+    return {"imu": engine.imu, "capability": cap, "decision": engine.policy_decision,
+            **engine.interaction_state()}
+
+
 @app.post("/api/emergency")
 def emergency(body: dict):
     try:
@@ -246,6 +266,14 @@ def dispatch(action: str, p: dict) -> dict | None:
             raise ValueError("Blink input requires a successful blink calibration on real EEG")
         e.blink_cfg.enabled = on
         e.log("blink", f"Experimental blink-to-reject {'enabled' if on else 'disabled'}")
+    elif action == "set_interaction_mode":
+        e.set_interaction_mode(str(p["mode"]))
+    elif action == "set_gestures_enabled":
+        e.set_gestures_enabled(bool(p["on"]))
+    elif action == "start_gesture_calibration":
+        e.start_gesture_calibration(int(p.get("cues_per_gesture", 6)))
+    elif action == "optimise_policy":
+        e.request_policy()
     elif action == "record_start":
         return {"path": e.start_recording(p.get("notes", ""))}
     elif action == "record_stop":
@@ -284,6 +312,18 @@ def dispatch(action: str, p: dict) -> dict | None:
             e.log("sim", "Simulated Bluetooth dropout" if sim.disconnected else "Simulated link restored")
         elif action == "sim_drop":
             sim.drop_probability = float(p["p"])
+        elif action == "sim_gesture":
+            sim.perform_gesture(p["kind"])
+            e.log("sim", f"Virtual patient head movement: {p['kind']}")
+        elif action == "sim_motion_profile":
+            sim.set_motion_profile(str(p["profile"]))
+            e.log("sim", f"Virtual patient motion profile: {p['profile']}")
+        elif action == "sim_imu_fault":
+            f = p.get("fault")
+            if f not in (None, "nan", "frozen"):
+                raise ValueError("fault must be null, 'nan' or 'frozen'")
+            sim.head.fault = f
+            e.log("sim", f"Simulated motion-sensor fault: {f or 'none'}")
         else:
             raise ValueError(f"unknown action {action}")
     else:

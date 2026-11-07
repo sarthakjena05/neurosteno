@@ -179,11 +179,16 @@ def _scores_grid(trials: list[Trial], freqs: list[float], windows: list[float], 
 
 
 def build_pool(n: int, level: str, ssvep_uv: float, seed: int, test_per_target: int = 40,
-               test_rest: int = 60, calib_per_target: int = 5, calib_rest: int = 8) -> Pool:
+               test_rest: int = 60, calib_per_target: int = 5, calib_rest: int = 8,
+               motion_profile: str | None = None) -> Pool:
+    """motion_profile: synthetic head-motion profile (acquisition/motion_sim.py) whose incidental
+    movement adds motion artifacts to the EEG of BOTH the calibration and the test trials."""
     fb = FBCCAConfig()
     freqs = FREQS[n]
     # ---- calibration session (engine protocol) ------------------------------------------
     src = SimulatedSource(seed=seed * 1000 + n, ssvep_uv=ssvep_uv)
+    if motion_profile:
+        src.set_motion_profile(motion_profile)
     cols = src.eeg_indices(DECODING)
     rng = np.random.default_rng(seed * 1000 + n)
     plan = [i for i in range(n) for _ in range(calib_per_target)] + [None] * calib_rest
@@ -202,6 +207,8 @@ def build_pool(n: int, level: str, ssvep_uv: float, seed: int, test_per_target: 
                                             == t.label for t in cued])), 3)
     # ---- test trials (different seed) ---------------------------------------------------
     src = SimulatedSource(seed=seed * 1000 + 500 + n, ssvep_uv=ssvep_uv)
+    if motion_profile:
+        src.set_motion_profile(motion_profile)
     labels = [i for i in range(n) for _ in range(test_per_target)] + [None] * test_rest
     test = _trials(src, freqs, labels, cols, max_w + 0.05)
     windows = [w for w in np.arange(stopping.min_window_s, stopping.max_window_s + 1e-9, stopping.step_s)]

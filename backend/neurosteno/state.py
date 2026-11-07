@@ -75,6 +75,13 @@ def snapshot(eng: Engine) -> dict:
             "durations": {"cue": c.CUE_S, "stim": c.STIM_S, "break": c.BREAK_S, "relax": c.RELAX_S,
                           "blink": c.BLINK_CUE_S, "eyes_open": c.EYES_S, "eyes_closed": c.EYES_S},
         }
+        if c.kind == "gesture":  # additive: neutral -> cued nod/shake/tilt -> natural movement
+            calib["gesture"] = {"step": c.plan[c.idx] if c.idx < len(c.plan) else "computing",
+                                "step_s": eng.gesture_step_duration(c.plan[c.idx]) if c.idx < len(c.plan) else None,
+                                "instruction": {"neutral": "Keep your head still", "natural": "Move naturally (no gestures)",
+                                                "nod": "Nod (yes)", "shake": "Shake your head (no)",
+                                                "tilt": "Tilt your head to the side and hold"}.get(
+                                    c.plan[c.idx] if c.idx < len(c.plan) else "", "Computing...")}
     sim = eng.sim
     plan = eng.plan.to_dict() if eng.plan else None
     return {
@@ -153,10 +160,14 @@ def snapshot(eng: Engine) -> dict:
             "noise_multiplier": sim.noise_multiplier, "bad_channels": sorted(sim.bad_channels),
             "disconnected": sim.disconnected, "drop_probability": sim.drop_probability,
             "ssvep_uv": sim.ssvep_uv,
+            "motion_profile": sim.head.profile.name, "imu_fault": sim.head.fault,
         },
         "calibration": calib,
         "electrode_check": eng.electrodes,
         "blink": {"config": eng.blink_cfg.to_dict(), "events": list(eng.blink_events)[-8:][::-1]},
+        # ---- additive (contract v1.4): optional IMU / gestures / interaction policy ----
+        "imu": eng.imu,
+        **eng.interaction_state(),
         "emergency": eng.emergency,
         "emergency_sources": EMERGENCY_SOURCES,
         "recording": None if not eng.recorder else {
