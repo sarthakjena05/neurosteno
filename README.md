@@ -14,7 +14,7 @@ g.tec Unicorn Hybrid Black and the official UnicornPy API.
 | UnicornPy acquisition (UN-2024.09.36 over Intel Bluetooth) | ✅ 10 s streamed: 2500 samples @ 250 Hz, 0 dropped (counter-verified) |
 | Real EEG signal validity | ⚠️ **Not yet.** Bring-up recording had all 8 channels identical (corr 1.000) with large DC drift: headset not worn / ear-clip reference not attached. Must be redone with the headset on. |
 | Real-EEG SSVEP classification | ❌ **Not validated.** REAL mode refuses to communicate until calibrated on real data. |
-| SIMULATED + REPLAY modes, full UI, phrase engine, routing | ✅ working; backend 50 tests, frontend 112 tests passing |
+| SIMULATED + REPLAY modes, full UI, phrase engine, routing | ✅ working; backend 119 passed + 1 xfail (2 hybrid-gesture tests flaky), frontend 112 tests passing |
 | c-VEP (experimental mode) | ⏳ not started; stimulus math (cyclic-shift codes, frame-locked renderer) is in place |
 
 ## Architecture

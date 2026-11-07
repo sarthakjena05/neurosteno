@@ -21,3 +21,4 @@ backend/recordings/
 *.npz
 
 backend/data/runtime/
+backend/data/runtime_archive/
