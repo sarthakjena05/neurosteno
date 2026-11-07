@@ -3,35 +3,27 @@ import { useEngineState } from './api'
 import ComparePage from './components/ComparePage'
 import OperatorPanel from './components/OperatorPanel'
 import PatientView from './components/PatientView'
+import { MedicalIcon } from './components/MedicalIcon'
 import { flicker } from './flicker'
 import { useLiveAB } from './useLiveAB'
+import { readInputs } from './multimodal'
 
 export type View = 'operate' | 'compare'
+function readHash() { return typeof location !== 'undefined' ? location.hash : '' }
+function loadFlag(key: string) { try { return localStorage.getItem(key) === '1' } catch { return false } }
+function saveFlag(key: string, on: boolean) { try { localStorage.setItem(key, on ? '1' : '0') } catch { /* unavailable */ } }
 
-function readHash(): string {
-  return typeof location !== 'undefined' ? location.hash : ''
-}
-function loadFlag(key: string): boolean {
-  try { return localStorage.getItem(key) === '1' } catch { return false }
-}
-function saveFlag(key: string, on: boolean) {
-  try { localStorage.setItem(key, on ? '1' : '0') } catch { /* storage unavailable */ }
-}
-
-/** A render error in one area must never blank the whole screen. */
 export class ErrorBoundary extends Component<{ area: string; children: ReactNode }, { error: string | null }> {
   state = { error: null as string | null }
   static getDerivedStateFromError(e: unknown) { return { error: e instanceof Error ? e.message : String(e) } }
   render() {
     if (!this.state.error) return this.props.children
-    return (
-      <div role="alert" data-testid={`error-${this.props.area}`} className="flex h-full flex-col items-center justify-center gap-3 rounded-3xl border-4 border-amber-400 bg-zinc-900 p-6 text-center">
-        <p className="text-3xl font-black text-amber-300">{this.props.area}: display error</p>
-        <p className="max-w-xl text-lg">Nothing is selected from this screen while it is broken. The backend keeps its own state.</p>
-        <p className="max-w-xl text-xs text-muted">{this.state.error}</p>
-        <button type="button" onClick={() => this.setState({ error: null })} className="rounded-xl bg-sky-600 px-4 py-2 font-bold">Try again</button>
-      </div>
-    )
+    return <div role="alert" data-testid={`error-${this.props.area}`} className="display-error">
+      <h2>{this.props.area}: display error</h2>
+      <p>Nothing is selected from this screen while it is broken. The backend keeps its own state.</p>
+      <p className="text-muted">{this.state.error}</p>
+      <button onClick={() => this.setState({ error: null })}>Try again</button>
+    </div>
   }
 }
 
@@ -40,101 +32,75 @@ export default function App() {
   const { state, connected, stale } = link
   const [hash, setHash] = useState(readHash)
   const patientOnly = hash === '#patient'
+  const demo = hash === '#demo'
   const view: View = hash === '#compare' ? 'compare' : 'operate'
-  const [showPanel, setShowPanel] = useState(true)
+  const [showPanel, setShowPanel] = useState(false)
   const [hc, setHc] = useState(() => loadFlag('ns.hc'))
-  // Lives here so a live A/B run survives switching views.
   const ab = useLiveAB(state)
   const live = connected && !stale
-
   useEffect(() => {
-    flicker.setEnabled(loadFlag('ns.flicker'))
+    const enabled = loadFlag('ns.flicker')
+    document.documentElement.dataset.visualStimulation = enabled ? 'on' : 'off'
+    flicker.setEnabled(enabled)
     const on = () => setHash(readHash())
     window.addEventListener('hashchange', on)
     return () => window.removeEventListener('hashchange', on)
   }, [])
-  // No stimulation while the screen is not live (nothing would be decoded from it).
   useEffect(() => { flicker.setSuspended(!live) }, [live])
-
-  const setView = (v: View) => { location.hash = v === 'compare' ? '#compare' : ''; setHash(readHash()) }
-  const toggleHc = () => setHc((v) => { saveFlag('ns.hc', !v); return !v })
+  const navigate = (next: string) => { location.hash = next; setHash(readHash()) }
   const enterPatientMode = () => {
-    location.hash = '#patient'
-    setHash(readHash())
-    document.documentElement.requestFullscreen?.().catch(() => { /* fullscreen refused: patient-only layout still applies */ })
+    navigate('#patient')
+    document.documentElement.requestFullscreen?.().catch(() => {})
   }
   const exitPatientMode = () => {
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
-    location.hash = ''
-    setHash(readHash())
+    navigate('')
   }
+  if (!state) return <main className={`loading-screen ${hc ? 'hc' : ''}`}>
+    <MedicalIcon name="brand" /><h1>NeuroSteno</h1>
+    <p>{connected ? 'Loading communication workspace…' : 'Connecting to the communication service…'}</p>
+    {link.reconnects > 2 && <p className="text-muted">Still trying ({link.reconnects} attempts). Check that the backend is running.</p>}
+  </main>
+  if (patientOnly) return <main className={`patient-fullscreen ${hc ? 'hc' : ''}`}>
+    <ErrorBoundary area="Patient screen"><PatientView s={state} link={{ connected, stale }} /></ErrorBoundary>
+    <button onClick={exitPatientMode} data-testid="exit-patient-mode" className="exit-patient">Exit patient mode (operator)</button>
+  </main>
 
-  if (!state) {
-    return (
-      <main className={`flex h-full items-center justify-center p-8 text-center ${hc ? 'hc' : ''}`}>
-        <div role="status">
-          <h1 className="text-4xl font-black">NeuroSteno</h1>
-          <p className="mt-2 text-xl text-muted">{connected ? 'Loading state…' : 'Connecting to the backend on port 8000…'}</p>
-          {link.reconnects > 2 && <p className="mt-2 text-sm text-amber-300">Still trying ({link.reconnects} attempts). Is <code>start-backend.ps1</code> running? See OPERATOR_CHECKLIST.md.</p>}
-        </div>
-      </main>
-    )
-  }
-
-  if (patientOnly) {
-    return (
-      <main className={`h-full p-2 ${hc ? 'hc' : ''}`}>
-        <ErrorBoundary area="Patient screen"><PatientView s={state} link={{ connected, stale }} /></ErrorBoundary>
-        <button type="button" onClick={exitPatientMode} data-testid="exit-patient-mode"
-          className="fixed bottom-2 right-2 z-50 rounded-full bg-panel2 px-3 py-1 text-xs text-muted opacity-40 hover:opacity-100 focus:opacity-100">
-          Exit patient mode (operator)
-        </button>
-      </main>
-    )
-  }
-
-  return (
-    <main className={`flex h-full flex-col gap-3 p-3 pt-12 lg:flex-row ${hc ? 'hc' : ''}`}>
-      <nav aria-label="View" className="fixed left-1/2 top-1 z-40 flex -translate-x-1/2 gap-1 rounded-full border border-line bg-panel p-1 text-sm shadow-lg">
-        <button type="button" aria-pressed={view === 'operate'} onClick={() => setView('operate')}
-          className={`rounded-full px-3 py-1 font-semibold ${view === 'operate' ? 'bg-sky-600' : 'text-muted hover:text-text'}`}>Patient + operator</button>
-        <button type="button" aria-pressed={view === 'compare'} onClick={() => setView('compare')} data-testid="open-compare"
-          className={`rounded-full px-3 py-1 font-semibold ${view === 'compare' ? 'bg-sky-600' : 'text-muted hover:text-text'}`}>Fixed menu vs NeuroSteno</button>
-        <span aria-hidden className="mx-1 w-px bg-line" />
-        <button type="button" onClick={enterPatientMode} data-testid="enter-patient-mode" className="rounded-full px-3 py-1 font-semibold text-muted hover:text-text">⛶ Patient full screen</button>
-        <button type="button" aria-pressed={hc} onClick={toggleHc} data-testid="toggle-hc"
-          className={`rounded-full px-3 py-1 font-semibold ${hc ? 'bg-white text-black' : 'text-muted hover:text-text'}`}>◐ High contrast</button>
+  return <main className={`app-shell ${hc ? 'hc' : ''}`} data-demo={demo}>
+    <header className="app-header">
+      <a className="brand" href="#" onClick={() => { setHash(''); setShowPanel(false) }} aria-label="NeuroSteno home">
+        <MedicalIcon name="brand" /><span>NeuroSteno<small>Assistive communication</small></span>
+      </a>
+      <nav aria-label="View" className="view-nav">
+        <button aria-pressed={view === 'operate' && !demo} onClick={() => navigate('')}>Patient + operator</button>
+        <button aria-pressed={demo} onClick={() => { navigate('#demo'); setShowPanel(false) }}>Demo mode</button>
+        <button aria-pressed={view === 'compare'} onClick={() => navigate('#compare')} data-testid="open-compare">Fixed menu vs NeuroSteno</button>
       </nav>
-      {view === 'compare' ? (
-        <>
-          <div className="min-h-[60vh] lg:min-h-0 lg:w-[40%] lg:shrink-0">
-            <ErrorBoundary area="Patient screen"><PatientView s={state} link={{ connected, stale }} /></ErrorBoundary>
-          </div>
-          <div className="min-h-0 flex-1">
-            <ErrorBoundary area="Comparison"><ComparePage s={state} ab={ab} /></ErrorBoundary>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="min-h-0 flex-1">
-            <ErrorBoundary area="Patient screen"><PatientView s={state} link={{ connected, stale }} /></ErrorBoundary>
-          </div>
-          {showPanel && (
-            <div className="h-[70vh] w-full shrink-0 lg:h-full lg:w-[440px]">
-              <ErrorBoundary area="Operator panel"><OperatorPanel s={state} link={link} onOpenCompare={() => setView('compare')} /></ErrorBoundary>
-            </div>
-          )}
-          <button type="button" aria-expanded={showPanel} onClick={() => setShowPanel((v) => !v)}
-            className="fixed bottom-3 right-3 z-50 rounded-full bg-panel2 px-3 py-1 text-xs text-muted opacity-70 hover:opacity-100">
-            {showPanel ? 'Hide' : 'Show'} operator panel
-          </button>
-        </>
-      )}
-      {!live && (
-        <div role="status" data-testid="link-banner" className="fixed left-1/2 top-12 z-50 -translate-x-1/2 rounded bg-red-700 px-3 py-1 text-sm font-semibold">
-          {connected ? 'No fresh data from the backend: display paused' : 'Backend disconnected: reconnecting…'}
-        </div>
-      )}
-    </main>
-  )
+      <div className="header-tools">
+        <button onClick={enterPatientMode} data-testid="enter-patient-mode" title="Patient full screen"><MedicalIcon name="expand" /><span>Full screen</span></button>
+        <button aria-pressed={hc} onClick={() => setHc(v => { saveFlag('ns.hc', !v); return !v })} data-testid="toggle-hc" title="High contrast"><MedicalIcon name="contrast" /><span>High contrast</span></button>
+        <button className="operator-toggle" aria-expanded={showPanel} aria-controls="operator-drawer" onClick={() => setShowPanel(v => !v)}><MedicalIcon name="settings" />{showPanel ? 'Close controls' : 'Controls'}</button>
+      </div>
+    </header>
+    <div className="session-status" aria-label="Session status">
+      <span className={`connection-status ${live ? 'is-live' : 'is-offline'}`}><i />{live ? 'Connected' : connected ? 'Data paused' : 'Reconnecting'}</span>
+      <span><b>Input</b> {readInputs(state).mode.replaceAll('_', ' ')}</span>
+      {state.mode.kind === 'real' && <span data-testid="live-eeg-status"><b>Live EEG</b> {!live ? 'Connection unverified' : state.source?.status?.connected && state.source?.status?.streaming ? 'Streaming' : 'Not streaming'}</span>}
+      <span><b>Patient</b> {state.profile.display_name}</span>
+      <span><b>Routing</b> {state.config.routing_mode === 'adaptive' ? 'Context-aware' : 'Fixed menu'}</span>
+      <span><b>Choices</b> {state.screen.n_choices}{state.config.auto_adapt ? ' · adaptive' : ''}</span>
+      <span data-testid="signal-quality-status" title={state.quality.problem ?? undefined} className={`signal-status ${state.quality.signal_ok ? 'signal-good' : ''}`}><MedicalIcon name="signal" />{state.quality.signal_ok ? 'Signal ready' : state.quality.signal_ok === false ? 'Signal needs attention' : 'Checking signal'}</span>
+    </div>
+    {demo && <div className="demo-toolbar" aria-label="Essential demo controls">
+      <span>Recording view <small>{state.mode.kind === 'real' ? 'Live headset · backend signal status' : state.mode.kind === 'simulated' ? 'Synthetic EEG · virtual patient' : 'EEG data origin remains visible'}</small></span>
+      <button onClick={() => setShowPanel(v => !v)}>Patient & simulation controls</button>
+      <button onClick={() => navigate('#compare')}>Compare approaches</button>
+    </div>}
+    <div className={`workspace ${view === 'compare' ? 'comparison-workspace' : ''} ${showPanel ? 'with-controls' : ''}`}>
+      <div className="patient-workspace"><ErrorBoundary area="Patient screen"><PatientView s={state} link={{ connected, stale }} /></ErrorBoundary></div>
+      {view === 'compare' && <div className="comparison-panel"><ErrorBoundary area="Comparison"><ComparePage s={state} ab={ab} /></ErrorBoundary></div>}
+      {showPanel && <div id="operator-drawer" className="operator-drawer"><ErrorBoundary area="Operator panel"><OperatorPanel s={state} link={link} onOpenCompare={() => { navigate('#compare'); setShowPanel(false) }} /></ErrorBoundary></div>}
+    </div>
+    {!live && <div role="status" data-testid="link-banner" className="link-banner">{connected ? 'No fresh data from the backend: display paused' : 'Backend disconnected: reconnecting…'}</div>}
+  </main>
 }

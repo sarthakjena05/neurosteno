@@ -73,7 +73,7 @@ function SessionTab({ s }: { s: State }) {
     get('/api/profiles').then(setProfiles).catch(() => {})
     get('/api/recordings').then(setRecs).catch(() => {})
   }, [])
-  const toggleFlicker = (on: boolean) => { flicker.setEnabled(on); setFlickerOn(on); try { localStorage.setItem('ns.flicker', on ? '1' : '0') } catch { /* ignore */ } }
+  const toggleFlicker = (on: boolean) => { document.documentElement.dataset.visualStimulation = on ? 'on' : 'off'; flicker.setEnabled(on); setFlickerOn(on); try { localStorage.setItem('ns.flicker', on ? '1' : '0') } catch { /* ignore */ } }
   const allowed = s.decoder.allowed_choices
   return (
     <div className="flex flex-col gap-3">
@@ -145,6 +145,7 @@ function SessionTab({ s }: { s: State }) {
         <PhrasePicker placeholder="Search phrases…" onPick={(id) => run(command('set_intended', { node_id: id }))} />
         {s.intended && <Btn onClick={() => run(command('set_intended', { node_id: null }))}>Clear</Btn>}
       </Section>
+      <section className="noise-control-slot" aria-label="Injected-noise controls" data-testid="noise-control-slot"><b>Injected noise</b><p>No control connected</p></section>
       <Section title="Recording">
         {s.recording ? <Btn tone="bg-red-700" onClick={() => run(command('record_stop'))}>Stop recording ({s.recording.seconds} s)</Btn>
           : <Btn disabled={!s.source} onClick={() => run(command('record_start'))}>Start recording</Btn>}
@@ -194,7 +195,7 @@ function SimulationTab({ s }: { s: State }) {
         <div className="flex flex-wrap gap-1">
           {['Fz', 'C3', 'Cz', 'C4', 'Pz', 'PO7', 'Oz', 'PO8'].map((l) => {
             const on = sim.bad_channels.includes(l)
-            return <Btn key={l} tone={on ? 'bg-red-700' : undefined} onClick={() => run(command('sim_bad_channel', { label: l, on: !on }))}>{l}{on ? ' ✗' : ''}</Btn>
+            return <Btn key={l} tone={on ? 'bg-red-700' : undefined} onClick={() => run(command('sim_bad_channel', { label: l, on: !on }))}>{l}{on ? ' ' : ''}</Btn>
           })}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -247,7 +248,7 @@ function SignalTab({ s }: { s: State }) {
       </Section>
       <Section title="Experimental blink detector">
         <p className="text-xs">enabled {String(s.blink.config.enabled)} · calibrated {String(s.blink.config.calibrated)} · threshold {String(s.blink.config.threshold_uv)} µV · refractory {String(s.blink.config.refractory_s)} s</p>
-        {s.blink.events.map((e) => <p key={e.time} className="text-xs">{e.accepted ? '✓' : '·'} {e.amplitude_uv} µV, {e.reason}</p>)}
+        {s.blink.events.map((e) => <p key={e.time} className="text-xs">{e.accepted ? '' : '·'} {e.amplitude_uv} µV, {e.reason}</p>)}
       </Section>
     </div>
   )
@@ -304,14 +305,14 @@ function RoutingTab({ s }: { s: State }) {
             {p.candidates.length === 0 && <p className="text-xs text-muted">No candidates above threshold for this profile.</p>}
             {p.candidates.map((c) => (
               <div key={c.node_id} className={`rounded p-2 text-xs ${c.included ? 'bg-green-950' : 'bg-zinc-800'}`}>
-                <b>{c.included ? '✓ included' : '✗ excluded'}</b> {c.title ?? c.node_id} (score {c.score})
+                <b>{c.included ? ' included' : ' excluded'}</b> {c.title ?? c.node_id} (score {c.score})
                 {c.delta_selections !== undefined && <> · ΔE[sel] {c.delta_selections} · Δt {c.delta_time_s} s</>}
                 <br />{c.why} · {c.reasons.join('; ')}
               </div>
             ))}
           </Section>
           <Section title="Urgent routes (always available, history-independent)">
-            {p.urgent.length ? p.urgent.map((u) => <p key={u} className="text-xs">⚠ {u}</p>) : <p className="text-xs text-muted">None (static baseline)</p>}
+            {p.urgent.length ? p.urgent.map((u) => <p key={u} className="text-xs"> {u}</p>) : <p className="text-xs text-muted">None (static baseline)</p>}
           </Section>
           <Section title="Target count from expected completion time">
             <table className="text-xs"><thead><tr><th className="text-left">n</th><th>E[sel]</th><th>T/sel</th><th>E[time]</th><th className="text-left">reliability</th></tr></thead>
@@ -392,7 +393,7 @@ export default function OperatorPanel({ s, link, onOpenCompare }: { s: State; li
     document.getElementById(`optab-${TABS[j]}`)?.focus()
   }
   return (
-    <aside className="flex h-full flex-col gap-2 overflow-hidden rounded-3xl border border-line bg-panel p-3" aria-label="Operator and caregiver panel">
+    <aside className="operator-panel" aria-label="Operator and caregiver panel">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-black">Operator panel</h2>
         <span className="text-xs text-muted">phase {s.phase} · {s.vocabulary.phrases} phrases</span>
@@ -406,11 +407,18 @@ export default function OperatorPanel({ s, link, onOpenCompare }: { s: State; li
           </button>
         ))}
       </div>
-      <div id="optab-panel" role="tabpanel" aria-labelledby={`optab-${tab}`} tabIndex={0} className="flex-1 overflow-y-auto pr-1">
+      <div id="optab-panel" role="tabpanel" aria-labelledby={`optab-${tab}`} tabIndex={0} className="operator-content">
         {tab === 'Demo' && (
           <div className="flex flex-col gap-3">
-            {link && <Preflight s={s} link={link} />}
-            <DemoGuide s={s} onGoTab={goTab} onOpenCompare={onOpenCompare} />
+            <Section title="Communication session">
+              <p className="text-sm font-semibold">{s.profile.display_name}</p>
+              <p className="text-xs text-muted">{s.screen.n_choices} choices · {s.config.routing_mode === 'adaptive' ? 'Context-aware routing' : 'Fixed menu'} · {s.mode.label}</p>
+              <div className="flex flex-wrap gap-2"><Btn onClick={() => goTab('Session')}>Patient & settings</Btn><Btn onClick={() => goTab(s.mode.kind === 'simulated' ? 'Simulation' : 'Signal')}>{s.mode.kind === 'simulated' ? 'Simulation controls' : 'Live signal'}</Btn></div>
+              {onOpenCompare && <Btn onClick={onOpenCompare}>Fixed menu vs NeuroSteno</Btn>}
+            </Section>
+            <section className="noise-control-slot" aria-label="Injected-noise controls"><b>Injected noise</b><p>No control connected</p></section>
+            {link && <details className="tutorial-details"><summary>Session readiness checks</summary><Preflight s={s} link={link} /></details>}
+            <details className="tutorial-details"><summary>Demo guide and tutorial</summary><DemoGuide s={s} onGoTab={goTab} onOpenCompare={onOpenCompare} /></details>
           </div>
         )}
         {tab === 'Session' && <SessionTab s={s} />}

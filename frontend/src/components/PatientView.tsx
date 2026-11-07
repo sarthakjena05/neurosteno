@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { MedicalIcon } from './MedicalIcon'
 import { command } from '../api'
 import { flicker, type Stim } from '../flicker'
 import { speakCue } from '../speech'
@@ -7,9 +8,6 @@ import { GestureCalibrationView, InputStrip } from './Inputs'
 import { calibratedForCurrent, calibrationRequired, isReplayedMessage, MODE_FRAME, modeCaption, originLabel } from '../mode'
 import type { Slot, State, Target } from '../types'
 
-const ICONS: Record<string, string> = {
-  pain: '🤕', breathing: '🫁', 'food-water': '🥤', comfort: '🛏️', 'call-caregiver': '🧑‍⚕️',
-}
 
 export const MODE_STYLE: Record<string, string> = {
   real: 'bg-real text-white',
@@ -65,107 +63,58 @@ function stimOf(t: Target | undefined): Stim | null {
 
 function SlotCard({ s, slot }: { s: State; slot: Slot }) {
   const t = targetFor(s, slot.key, ['choose'])
-  const ref = useStim(`slot-${slot.index}`, stimOf(t))
+  const ref = useStim('slot-' + slot.index, stimOf(t))
   const hl = s.highlight?.slot_index === slot.index && ['PREDICTION_HIGHLIGHTED', 'ACCEPTED'].includes(s.phase)
   const accepted = hl && s.phase === 'ACCEPTED'
-  const dimmed = s.highlight && !hl && ['PREDICTION_HIGHLIGHTED', 'ACCEPTED'].includes(s.phase)
   const isSim = s.mode.kind === 'simulated'
   const gazed = s.sim?.gaze_key === slot.key
-  const homeCat = s.screen.at_home && slot.kind === 'option'
-  const onClick = () => { if (isSim) command('sim_gaze', { key: slot.key }).catch(() => {}) }
-  const urgentGroup = slot.items.some((i) => i.urgent_route)
-  const suggestedGroup = slot.items.some((i) => i.suggested && i.key.startsWith('sc:'))
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`Choice ${slot.index + 1}: ${slot.label}${hl ? ' (predicted)' : ''}`}
-      data-testid={`slot-${slot.index}`}
-      data-highlighted={hl ? 'true' : 'false'}
-      className={[
-        'relative flex min-h-48 flex-col overflow-hidden rounded-3xl border-4 p-5 text-left',
-        slot.is_back ? 'border-line bg-panel2' : 'border-line bg-panel',
-        // static emphasis only: no pulsing / scaling / transitions near SSVEP targets
-        hl && !accepted ? 'predicted-target border-pending' : '',
-        accepted ? 'border-accept bg-green-950' : '',
-        dimmed ? 'opacity-35' : '',
-        isSim ? 'cursor-pointer hover:border-sky-400' : 'cursor-default',
-      ].join(' ')}
-    >
-      <div ref={ref} className="stim-layer" />
-      <div className="relative z-10 flex items-start justify-between gap-2">
-        <span className="rounded-lg bg-black/60 px-2 py-0.5 text-sm font-semibold text-muted">
-          {slot.index + 1}{t ? ` · ${t.freq} Hz` : ''}
-        </span>
-        <div className="flex gap-1">
-          {urgentGroup && <span className="rounded-lg bg-red-600 px-2 py-0.5 text-sm font-bold">URGENT</span>}
-          {suggestedGroup && <span className="rounded-lg bg-sky-600 px-2 py-0.5 text-sm font-bold">FOR YOU</span>}
-          {gazed && <span className="rounded-lg bg-sim px-2 py-0.5 text-sm font-bold">virtual gaze</span>}
-        </div>
-      </div>
-      {hl && !accepted && (
-        <div className="relative z-10 mt-2 self-start rounded-xl bg-pending px-3 py-1 text-xl font-black text-black">
-          Did you mean this?
-        </div>
-      )}
-      {accepted && <div className="relative z-10 mt-2 self-start rounded-xl bg-accept px-3 py-1 text-xl font-black text-black">✓ Accepted</div>}
-      {slot.kind === 'option' ? (
-        <div className="relative z-10 mt-auto flex items-center gap-4 rounded-2xl bg-black/55 p-3">
-          {homeCat && <span className="text-6xl" aria-hidden>{ICONS[slot.key] ?? ''}</span>}
-          <span className={`${slot.is_back ? 'text-3xl' : 'text-4xl'} font-extrabold leading-tight`}>
-            {slot.is_back ? '↩ ' : ''}{slot.label}
-          </span>
-        </div>
-      ) : (
-        <div className="relative z-10 mt-3 flex flex-1 flex-col gap-2">
-          <div className="rounded-xl bg-black/55 px-3 py-1 text-2xl font-extrabold">{slot.label}</div>
-          <div className={`grid gap-2 ${s.screen.at_home ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
-            {slot.items.map((it) => (
-              <div key={it.key} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${s.screen.at_home ? 'bg-panel2 text-3xl font-extrabold' : 'bg-black/50 text-xl font-semibold'}`}>
-                {s.screen.at_home && <span aria-hidden className="text-4xl">{ICONS[it.key] ?? ''}</span>}
-                <span>{it.kind === 'back' ? '↩ ' : ''}{it.label}</span>
-                {it.urgent_route && <span className="ml-auto rounded bg-red-600 px-1.5 text-xs font-bold">URGENT</span>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {homeCat && s.screen.home_badges[slot.key] && (
-        <div className="relative z-10 mt-2 flex flex-wrap gap-1">
-          {s.screen.home_badges[slot.key].slice(0, 3).map((b) => (
-            <span key={b.title} className={`rounded-lg px-2 py-0.5 text-sm font-semibold ${b.urgent ? 'bg-red-900/80' : 'bg-sky-900/80'}`}>
-              {b.urgent ? '⚠ ' : '★ '}{b.title}
-            </span>
-          ))}
-        </div>
-      )}
-      {slot.suggest_reasons.length > 0 && (
-        <p data-testid={`why-${slot.index}`} className="relative z-10 mt-2 self-start rounded-lg bg-sky-950/85 px-2 py-1 text-sm text-sky-100">
-          <span className="font-bold">NeuroRoute:</span> {slot.suggest_reasons.join(' · ')}
-        </p>
-      )}
-    </button>
-  )
+  const urgent = slot.items.some(i => i.urgent_route)
+  const suggested = slot.items.some(i => i.suggested && i.key.startsWith('sc:'))
+  return <button type="button"
+    onClick={() => { if (isSim) command('sim_gaze', { key: slot.key }).catch(() => {}) }}
+    aria-label={'Choice ' + (slot.index + 1) + ': ' + slot.label + (hl ? ' (predicted)' : '')}
+    data-testid={'slot-' + slot.index} data-highlighted={hl ? 'true' : 'false'}
+    data-stimulating={!!t && flicker.enabled && !flicker.suspended}
+    data-eeg-target={!!t}
+    className={'choice-card ' + (hl && !accepted ? 'predicted-target ' : '') + (accepted ? 'choice-accepted ' : '') + (slot.is_back ? 'choice-back' : '')}>
+    <div ref={ref} className="stim-layer" />
+    <div className="choice-meta">
+      <span>{slot.index + 1}{t ? ' | ' + t.freq + ' Hz' : ''}</span>
+      <span>{urgent && <b className="urgent-tag">URGENT</b>}{suggested && <b className="suggested-tag">FOR YOU</b>}{gazed && <b className="gaze-tag">virtual gaze</b>}</span>
+    </div>
+    {hl && !accepted && <span className="prediction-label">Did you mean this?</span>}
+    {accepted && <span className="prediction-label">Accepted</span>}
+    {slot.kind === 'option' ? <div className="choice-content">
+      <span className="choice-icon"><MedicalIcon name={slot.is_back ? 'back' : slot.key.split('/')[0]} /></span>
+      <span className="choice-label">{slot.label}</span>
+    </div> : <div className="choice-group">
+      <div className="group-heading"><MedicalIcon name="choices" /><span>{slot.label}</span></div>
+      <div className="group-items">{slot.items.map(it => <div key={it.key} className="group-item">
+        <MedicalIcon name={it.kind === 'back' ? 'back' : it.key.split('/')[0]} /><span>{it.label}</span>
+        {it.urgent_route && <b className="urgent-tag">URGENT</b>}
+      </div>)}</div>
+    </div>}
+    {s.screen.at_home && s.screen.home_badges[slot.key] && <div className="choice-badges">
+      {s.screen.home_badges[slot.key].slice(0, 2).map(b => <span key={b.title}>{b.urgent ? 'Urgent: ' : 'Suggested: '}{b.title}</span>)}
+    </div>}
+    {slot.suggest_reasons.length > 0 && <p data-testid={'why-' + slot.index} className="choice-reason"><b>NeuroRoute:</b> {slot.suggest_reasons.join(' | ')}</p>}
+  </button>
 }
 
 function DecisionTarget({ s, tkey, label, tone }: { s: State; tkey: 'yes' | 'no'; label: string; tone: 'yes' | 'no' }) {
   const t = targetFor(s, tkey, ['confirm', 'review'])
-  const ref = useStim(`decision-${tkey}`, stimOf(t))
+  const ref = useStim('decision-' + tkey, stimOf(t))
   const isSim = s.mode.kind === 'simulated'
-  const gazed = s.sim?.gaze_key === tkey
-  return (
-    <button
-      type="button"
-      data-testid={`decision-${tkey}`}
-      onClick={() => isSim && command('sim_gaze', { key: tkey }).catch(() => {})}
-      className={`relative min-h-32 flex-1 overflow-hidden rounded-3xl border-4 p-4 text-4xl font-black ${tone === 'yes' ? 'border-accept bg-green-950' : 'border-reject bg-red-950'} ${isSim ? 'cursor-pointer' : 'cursor-default'}`}
-    >
-      <div ref={ref} className="stim-layer" />
-      <span className="relative z-10 rounded-2xl bg-black/60 px-4 py-2">{label}</span>
-      {t && <span className="absolute left-3 top-2 z-10 rounded bg-black/60 px-2 text-sm text-muted">{t.freq} Hz</span>}
-      {gazed && <span className="absolute right-3 top-2 z-10 rounded bg-sim px-2 text-sm">virtual gaze</span>}
-    </button>
-  )
+  return <button type="button" data-testid={'decision-' + tkey}
+    data-stimulating={!!t && flicker.enabled && !flicker.suspended}
+    data-eeg-target={!!t}
+    onClick={() => isSim && command('sim_gaze', { key: tkey }).catch(() => {})}
+    className={'decision-card decision-' + tone}>
+    <div ref={ref} className="stim-layer" />
+    <span className="decision-label">{label}</span>
+    {t && <span className="decision-frequency">{t.freq} Hz</span>}
+    {s.sim?.gaze_key === tkey && <span className="decision-gaze">virtual gaze</span>}
+  </button>
 }
 
 function Evidence({ s }: { s: State }) {
@@ -190,7 +139,7 @@ export function ModeBadge({ s }: { s: State }) {
   const k = s.mode.kind
   const label = k === 'replay' ? `REPLAY · recorded ${String(s.mode.replay_of ?? 'unknown').toUpperCase()} data` : s.mode.label
   return (
-    <span data-testid="mode-badge" className={`rounded-xl px-4 py-2 text-lg font-black tracking-wide ${MODE_STYLE[k]}`}>
+    <span data-testid="mode-badge" className={`origin-badge ${MODE_STYLE[k]}`}>
       {label}{k === 'simulated' ? ' · synthetic signals' : ''}
     </span>
   )
@@ -202,7 +151,7 @@ export function CalibrationChip({ s }: { s: State }) {
   const ok = calibratedForCurrent(s)
   return (
     <span data-testid="calib-chip" className={`rounded-xl px-3 py-2 text-base font-bold ${ok ? 'bg-green-900 text-green-100' : 'bg-amber-400 text-black'}`}>
-      {ok ? `✓ Calibrated for ${s.screen.n_choices} targets` : `⚠ Not calibrated for ${s.screen.n_choices} targets`}
+      {ok ? ` Calibrated for ${s.screen.n_choices} targets` : ` Not calibrated for ${s.screen.n_choices} targets`}
     </span>
   )
 }
@@ -212,7 +161,7 @@ function Overlay({ children, tone = 'bg-black/85', label, role = 'dialog', testI
 }) {
   return (
     <div role={role} aria-modal={role === 'status' ? undefined : true} aria-label={label} data-testid={testId}
-      className={`absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 rounded-3xl p-8 text-center ${tone}`}>
+      className={`patient-overlay ${tone}`}>
       {children}
     </div>
   )
@@ -247,7 +196,7 @@ export function NeuroRouteStrip({ s }: { s: State }) {
   const stat = r1(p?.expected.static_selections)
   const saved = sel != null && stat != null ? Math.round((stat - sel) * 10) / 10 : null
   return (
-    <div data-testid="neuroroute-strip" className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel px-3 py-2 text-base">
+    <div data-testid="neuroroute-strip" className="routing-strip">
       <span className={`rounded-lg px-2 py-0.5 font-black ${adaptive ? 'bg-sky-600' : 'bg-zinc-600'}`}>
         {adaptive ? 'NeuroRoute · risk-aware' : 'Static menu (baseline)'}
       </span>
@@ -324,9 +273,9 @@ function AlphaCheckOverlay({ s }: { s: State }) {
 function CalibTarget({ i, freq, active, cue }: { i: number; freq: number; active: boolean; cue: boolean }) {
   const ref = useStim(`calib-${i}`, active ? { kind: 'ssvep', freq } : null)
   return (
-    <div className={`relative flex min-h-40 items-center justify-center overflow-hidden rounded-3xl border-4 ${cue ? 'border-pending' : 'border-line'} bg-panel`}>
+    <div data-eeg-target={active} data-stimulating={active && flicker.enabled && !flicker.suspended} className={`calibration-target relative flex min-h-40 items-center justify-center overflow-hidden rounded-3xl border-4 ${cue ? 'border-pending' : 'border-line'} bg-panel`}>
       <div ref={ref} className="stim-layer" />
-      <span className="relative z-10 rounded-xl bg-black/60 px-3 py-1 text-3xl font-black">{cue ? '👁 LOOK HERE' : `${freq} Hz`}</span>
+      <span className="relative z-10 rounded-xl bg-black/60 px-3 py-1 text-3xl font-black">{cue ? ' LOOK HERE' : `${freq} Hz`}</span>
     </div>
   )
 }
@@ -362,7 +311,7 @@ export function StageIndicator({ s }: { s: State }) {
   const cur = STAGES.findIndex((st) => st.phases.includes(s.phase))
   if (cur < 0) return null
   return (
-    <ol aria-label="Step" data-testid="stage-indicator" className="flex flex-wrap gap-2 text-lg">
+    <ol aria-label="Step" data-testid="stage-indicator" className="stage-indicator">
       {STAGES.map((st, i) => (
         <li key={st.key} aria-current={i === cur ? 'step' : undefined} data-active={i === cur ? 'true' : 'false'}
           className={`rounded-xl border-2 px-3 py-1 font-bold ${i === cur ? 'border-pending bg-pending text-black' : i < cur ? 'border-line text-muted' : 'border-line text-muted opacity-60'}`}>
@@ -380,7 +329,7 @@ function SignalWarning({ s }: { s: State }) {
   if (q.signal_ok !== false && !q.problem) return null
   return (
     <p role="status" data-testid="signal-warning" className="rounded-2xl border-4 border-amber-400 bg-amber-950 px-4 py-2 text-xl font-bold">
-      ⚠ Signal quality: {q.problem ?? 'check electrodes'}
+       Signal quality: {q.problem ?? 'check electrodes'}
     </p>
   )
 }
@@ -392,21 +341,21 @@ export default function PatientView({ s, link }: { s: State; link?: { connected:
   const review = s.phase === 'MESSAGE_REVIEW' && s.review
   return (
     <section data-testid="patient-screen" data-mode={s.mode.kind}
-      className={`relative flex h-full flex-col gap-4 overflow-y-auto rounded-3xl border-[6px] bg-ink p-4 md:p-6 ${MODE_FRAME[s.mode.kind]}`}
+      className={`patient-screen ${MODE_FRAME[s.mode.kind]}`}
       aria-label={`Patient communication screen, ${s.mode.label}`}>
-      <header className="flex flex-wrap items-center gap-3">
+      <header className="patient-header">
         <ModeBadge s={s} />
         <CalibrationChip s={s} />
-        <span className="text-lg text-muted">{s.screen.n_choices} choices · {s.config.effective_policy === 'provisional' ? 'provisional + correction window' : 'confirm every choice'}</span>
-        <span className="ml-auto rounded-lg border border-line px-2 py-1 text-xs text-muted">Research prototype. Not a medical device.</span>
-        <p data-testid="mode-caption" className="w-full text-sm text-muted">{modeCaption(s)}</p>
+        <span className="patient-choice-count">{s.screen.n_choices} choices · {s.config.effective_policy === 'provisional' ? 'provisional + correction window' : 'confirm every choice'}</span>
+        <span className="prototype-label">Research prototype. Not a medical device.</span>
+        <p data-testid="mode-caption" className="mode-caption">{modeCaption(s)}</p>
       </header>
       <NeuroRouteStrip s={s} />
       <InputStrip vm={inputs} action={s.attempt?.kind ?? null} />
       <SignalWarning s={s} />
       <StageIndicator s={s} />
 
-      <nav aria-label="Where you are" className="flex flex-wrap items-center gap-2 text-xl">
+      <nav aria-label="Where you are" className="patient-breadcrumbs">
         <span className="font-bold">Home</span>
         {s.screen.crumbs.map((c, i) => (
           <span key={i} className="flex items-center gap-2">
@@ -422,18 +371,18 @@ export default function PatientView({ s, link }: { s: State; link?: { connected:
         )}
       </nav>
 
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <h1 data-testid="prompt" className="text-5xl font-black md:text-6xl">{s.screen.prompt}</h1>
-        <p className="text-2xl font-semibold text-sky-300" aria-live="polite">{phaseText(s)}</p>
+      <div className="patient-prompt">
+        <h1 data-testid="prompt" className="patient-title">{s.screen.prompt}</h1>
+        <p className="phase-instruction" aria-live="polite">{phaseText(s)}</p>
       </div>
       <Evidence s={s} />
 
-      <div className={`grid flex-1 gap-4 ${gridClass(s.screen.n_choices)}`} data-testid="slots">
+      <div className={`choice-grid ${gridClass(s.screen.n_choices)}`} data-count={s.screen.slots.length} data-testid="slots">
         {s.screen.slots.map((slot) => <SlotCard key={slot.key + slot.index} s={s} slot={slot} />)}
       </div>
 
       {highlighted && (
-        <div className="flex flex-col gap-2" data-testid="confirm-bar">
+        <div className="confirmation-area" data-testid="confirm-bar">
           {s.highlight?.provisional_remaining_s != null && (
             <p className="text-center text-2xl text-pending">Selecting “{s.highlight.label}” in {s.highlight.provisional_remaining_s.toFixed(1)} s unless you look at NO</p>
           )}
@@ -458,7 +407,7 @@ export default function PatientView({ s, link }: { s: State; link?: { connected:
       )}
       {s.phase === 'MESSAGE_SENT' && s.feedback && (
         <Overlay tone="bg-green-950/95" label="Message sent" role="status" testId="sent-overlay">
-          <p className="text-3xl">✓ Sent to your caregiver</p>
+          <p className="text-3xl"> Sent to your caregiver</p>
           <p className="max-w-4xl text-5xl font-black">“{s.feedback.label}”</p>
           <SentOrigin s={s} />
         </Overlay>
@@ -503,11 +452,11 @@ export default function PatientView({ s, link }: { s: State; link?: { connected:
         </Overlay>
       )}
 
-      <footer className="flex flex-wrap items-center gap-3" aria-label="Caregiver controls">
+      <footer className="patient-actions" aria-label="Caregiver controls">
         <button type="button" onClick={() => command('back').catch(() => {})} className="rounded-xl bg-panel2 px-5 py-3 text-xl font-bold">↩ Back</button>
         <button type="button" onClick={() => command('home').catch(() => {})} className="rounded-xl bg-panel2 px-5 py-3 text-xl font-bold">⌂ Home</button>
         <button type="button" disabled={!s.screen.can_undo} onClick={() => command('undo').catch(() => {})} className="rounded-xl bg-panel2 px-5 py-3 text-xl font-bold disabled:opacity-40">⟲ Undo</button>
-        <button type="button" disabled={!(highlighted || review)} onClick={() => command('caregiver_reject').catch(() => {})} className="rounded-xl bg-panel2 px-5 py-3 text-xl font-bold disabled:opacity-40">✋ Patient said no</button>
+        <button type="button" disabled={!(highlighted || review)} onClick={() => command('caregiver_reject').catch(() => {})} className="rounded-xl bg-panel2 px-5 py-3 text-xl font-bold disabled:opacity-40"> Patient said no</button>
         <button type="button" onClick={() => command('emergency', { source: 'demo_button' }).catch(() => {})} className="ml-auto rounded-xl border-4 border-red-300 bg-red-700 px-6 py-3 text-2xl font-black" aria-label="HELP NOW demo control">
           HELP NOW <span className="text-sm font-semibold">(demo)</span>
         </button>

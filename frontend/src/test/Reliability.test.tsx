@@ -117,6 +117,31 @@ describe('WebSocket connection handling', () => {
 })
 
 describe('patient accessibility', () => {
+  it('shows live headset status and quality from backend state, including loss of the connection', () => {
+    render(<App />)
+    const s = mockState({ mode: { kind: 'real', label: 'REAL EEG', origin: 'real', is_real_eeg: true, replay_of: null },
+      source: { status: { connected: true, streaming: true } } as State['source'], quality: { signal_ok: false, problem: 'Oz flat' } })
+    act(() => { FakeWS.instances[0].open(); FakeWS.instances[0].send(s) })
+    expect(screen.getByTestId('live-eeg-status')).toHaveTextContent('Streaming')
+    expect(screen.getByTestId('signal-quality-status')).toHaveTextContent('Signal needs attention')
+    expect(screen.getByTestId('signal-quality-status')).toHaveAttribute('title', 'Oz flat')
+    act(() => FakeWS.instances[0].close())
+    expect(screen.getByTestId('live-eeg-status')).toHaveTextContent('Connection unverified')
+  })
+
+  it('reflects backend-driven 5, 3 and 2 choices while keeping controls collapsed', () => {
+    render(<App />)
+    act(() => FakeWS.instances[0].open())
+    for (const n of [5, 3, 2]) {
+      act(() => FakeWS.instances[0].send(mockState({}, n)))
+      expect(screen.getByLabelText('Session status')).toHaveTextContent('Choices ' + n)
+    }
+    expect(screen.queryByLabelText('Operator and caregiver panel')).not.toBeInTheDocument()
+    act(() => screen.getByRole('button', { name: /^Controls$/ }).click())
+    expect(screen.getByLabelText('Operator and caregiver panel')).toBeInTheDocument()
+    expect(screen.getByLabelText('Injected-noise controls')).toHaveTextContent('No control connected')
+  })
+
   it('shows exactly one current stage for each phase of the flow', () => {
     const cases: [State['phase'], string][] = [['EVIDENCE_COLLECTION', '1. Choose'], ['PREDICTION_HIGHLIGHTED', '2. Confirm YES / NO'], ['MESSAGE_REVIEW', '3. Check & SEND'], ['MESSAGE_SENT', '4. Sent']]
     for (const [phase, label] of cases) {

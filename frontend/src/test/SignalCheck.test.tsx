@@ -55,10 +55,10 @@ describe('electrode signal check', () => {
   it('lays out all 8 electrodes with verdicts shown by symbol, not colour alone', () => {
     render(<SignalCheck s={mockState({ source: {} as State['source'], electrode_check: check() })} />)
     expect(screen.getByTestId('electrode-PO7')).toHaveAttribute('data-verdict', 'bad')
-    expect(screen.getByTestId('electrode-PO7')).toHaveTextContent('✗')
+    expect(screen.getByTestId('electrode-PO7')).toHaveTextContent('bad')
     expect(screen.getByTestId('electrode-Oz')).toHaveTextContent('?')
     expect(screen.getByTestId('electrode-PO8')).toHaveAttribute('data-verdict', 'no_data')
-    expect(screen.getByTestId('electrode-Fz')).toHaveTextContent('✓')
+    expect(screen.getByTestId('electrode-Fz')).toHaveTextContent('good')
     expect(screen.getByTestId('electrode-headline')).toHaveTextContent('Not ready: Fix occipital/parietal electrodes')
     expect(screen.getByText(/Press the electrode to the scalp/)).toBeInTheDocument()
   })

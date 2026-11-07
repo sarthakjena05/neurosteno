@@ -14,9 +14,9 @@ const MONTAGE: Record<string, [number, number]> = {
 }
 
 const VERDICT: Record<ElectrodeVerdict, { cls: string; mark: string; text: string }> = {
-  good: { cls: 'bg-green-700 border-green-300', mark: '✓', text: 'good' },
+  good: { cls: 'bg-green-700 border-green-300', mark: 'good', text: 'good' },
   suspect: { cls: 'bg-amber-500 border-amber-200 text-black', mark: '?', text: 'suspect' },
-  bad: { cls: 'bg-red-700 border-red-300', mark: '✗', text: 'bad' },
+  bad: { cls: 'bg-red-700 border-red-300', mark: 'bad', text: 'bad' },
   no_data: { cls: 'bg-zinc-700 border-zinc-400', mark: '–', text: 'no data' },
 }
 
@@ -69,7 +69,7 @@ export default function SignalCheck({ s }: { s: State }) {
       {ec && (
         <>
           <p data-testid="electrode-headline" className={`rounded p-2 text-sm font-semibold ${ec.ready ? 'bg-green-950' : 'bg-amber-950'}`}>
-            {ec.ready ? '✓ Ready' : '⚠ Not ready'}: {ec.summary?.headline ?? ec.message ?? ''}
+            {ec.ready ? ' Ready' : ' Not ready'}: {ec.summary?.headline ?? ec.message ?? ''}
             {ec.reference_ok === false && <span className="block font-normal">Reference/ground: attach both ear clips.</span>}
           </p>
           <Montage channels={ec.channels} />
