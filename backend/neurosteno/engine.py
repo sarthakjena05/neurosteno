@@ -167,7 +167,7 @@ class Engine:
     # profile / context
     # ===================================================================================
     def set_profile(self, profile_id: str) -> None:
-        self.profile = self.store.load(profile_id, self.source_origin())
+        self.profile = self.store.load(profile_id, self.history_origin())
         self.nav = Navigator(self.catalog)
         self.task = None
         self._load_calibration()
@@ -186,7 +186,7 @@ class Engine:
         """Re-rank after a confirmed message. Applied on returning Home, so positions are
         stable while the patient is mid-navigation."""
         tags = self.profile.session_context.get("tags", [])
-        self.profile = self.store.load(self.profile.id, self.source_origin())
+        self.profile = self.store.load(self.profile.id, self.history_origin())
         self.profile.session_context["tags"] = tags
         self._rerank()
 
@@ -268,12 +268,13 @@ class Engine:
     def metrics_summary(self) -> list[dict]:
         groups: dict[tuple, list[dict]] = {}
         for m in self.metrics:
-            groups.setdefault((m["origin"], m["routing_mode"], m["profile"], m.get("n_start")), []).append(m)
+            groups.setdefault((m["origin"], m.get("source", "unknown"), m["routing_mode"], m["profile"],
+                               m.get("n_start")), []).append(m)
         out = []
-        for (origin, mode, prof, n), ms in sorted(groups.items(), key=lambda kv: [str(x) for x in kv[0]]):
+        for (origin, source, mode, prof, n), ms in sorted(groups.items(), key=lambda kv: [str(x) for x in kv[0]]):
             known = [m for m in ms if m["correct"] is not None]
             out.append({
-                "origin": origin, "routing_mode": mode, "profile": prof, "n": n, "messages": len(ms),
+                "origin": origin, "source": source, "routing_mode": mode, "profile": prof, "n": n, "messages": len(ms),
                 "mean_selections": round(float(np.mean([m["selections"] for m in ms])), 2),
                 "mean_rejected_predictions": round(float(np.mean([m["rejected_predictions"] for m in ms])), 2),
                 "mean_abstentions": round(float(np.mean([m["abstentions"] for m in ms])), 2),
@@ -323,6 +324,18 @@ class Engine:
             if res and res.get("supported") and res.get("origin") == self.source_origin():
                 out.append(n)
         return out
+
+    def history_origin(self) -> str:
+        """Origin key for the patient's confirmed-message history. A replay re-decodes old EEG,
+        so messages it "sends" were never sent by the patient now: keep them out of the live
+        real/simulated history that drives context ranking."""
+        if self.source is not None and self.source.kind == SourceKind.REPLAY:
+            return "replay"
+        return self.source_origin()
+
+    def calibration_required(self) -> bool:
+        """Real-origin EEG (live or replayed) must be calibrated on real data before use."""
+        return self.cfg.require_calibration_real and self.source_origin() == "real"
 
     def source_origin(self) -> str:
         if self.source is None:
@@ -455,9 +468,10 @@ class Engine:
         elif good_dec < self.qcfg.min_good_decoding_channels:
             problem = f"Poor signal on decoding channels ({good_dec}/{len(self.cfg.decoding_labels)} usable)"
         self.quality["signal_ok_for_calibration"] = problem is None
-        if problem is None and src.kind == SourceKind.REAL and self.cfg.require_calibration_real                 and not self.stopping_for(self.cfg.n_choices).calibrated:
-            problem = (f"Real EEG is not calibrated for {self.cfg.n_choices} targets yet. Run SSVEP calibration "
-                       "before communicating (default thresholds come from synthetic data).")
+        if problem is None and self.calibration_required() and not self.stopping_for(self.cfg.n_choices).calibrated:
+            what = "Real EEG" if src.kind == SourceKind.REAL else "Replayed real EEG"
+            problem = (f"{what} is not calibrated for {self.cfg.n_choices} targets yet. Run SSVEP calibration "
+                       "on real data before communicating (default thresholds come from synthetic data).")
         self.quality["problem"] = problem
         self.quality["signal_ok"] = problem is None
 
@@ -475,10 +489,18 @@ class Engine:
         total = src.total_samples
         win = src.read_range(max(0, total - int(4 * fs)), total)[:, cols]
         contacts = channel_contacts(win, fs, labels, self.ecfg)
+        for c in contacts:
+            c["status"] = c["verdict"]
+            c["hint"] = c["advice"][0] if c["advice"] else None
+        summary = summarize_contacts(contacts, self.cfg.decoding_labels)
         self.electrodes = {
+            "ready": (not summary["reference_off"] and summary["counts"]["no_data"] == 0
+                      and len(summary["decoding_usable"]) >= self.qcfg.min_good_decoding_channels),
+            "reference_ok": not summary["reference_off"] and summary["counts"]["no_data"] == 0,
+            "message": summary["headline"],
             "window_s": round(win.shape[0] / fs, 2),
             "channels": contacts,
-            "summary": summarize_contacts(contacts, self.cfg.decoding_labels),
+            "summary": summary,
             "spectra": channel_spectra(win, fs, labels),
             "note": "Heuristic contact estimate from the signal itself; UnicornPy exposes no impedance.",
         }
@@ -707,7 +729,7 @@ class Engine:
             "provisional_steps": sum(1 for c in self.nav.crumbs if c.provisional),
         }
         self.sent.append(msg)
-        self.store.append_confirmed(self.profile.id, leaf.id, leaf.phrase, self.source_origin())
+        self.store.append_confirmed(self.profile.id, leaf.id, leaf.phrase, self.history_origin())
         self._task_finish(leaf)
         self.log("message", f"MESSAGE CONFIRMED by patient: \"{leaf.phrase}\"")
         self._mark("message_sent", text=leaf.phrase, node=leaf.id)

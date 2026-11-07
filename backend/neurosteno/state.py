@@ -85,6 +85,8 @@ def snapshot(eng: Engine) -> dict:
             "origin": origin,
             "is_real_eeg": kind == "real",
             "replay_of": src.status.extra.get("origin") if src and src.kind == SourceKind.REPLAY else None,
+            "calibrated": bool(src) and eng.stopping_for(eng.cfg.n_choices).calibrated,
+            "calibration_required": bool(src) and eng.calibration_required(),
         },
         "source": src.info() if src else None,
         "phase": eng.phase.value,

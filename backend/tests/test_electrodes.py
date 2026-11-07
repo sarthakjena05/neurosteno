@@ -125,3 +125,49 @@ def test_recording_longer_than_ring_buffer_is_complete(tmp_path, monkeypatch):
     run_until(eng, clock, lambda: False, max_s=135, dt=0.1)
     info = eng.stop_recording()
     assert info["duration_s"] >= 134 and info["lost_samples"] == 0
+
+
+def _real_origin_recording(tmp_path):
+    """A recording whose metadata says origin=real (data synthetic, for gating tests only)."""
+    import json
+    from neurosteno.acquisition.replay import SessionRecorder
+    from neurosteno.headless import FakeClock
+    clock = FakeClock()
+    s = SimulatedSource(seed=4, clock=clock)
+    s.start()
+    rec = SessionRecorder(s, tmp_path / "real.npz")
+    for _ in range(100):
+        clock.advance(0.1)
+        s.poll()
+        rec.flush()
+    rec.save()
+    z = dict(np.load(tmp_path / "real.npz"))
+    meta = json.loads(str(z["meta"]))
+    meta["origin"] = "real"
+    z["meta"] = json.dumps(meta)
+    np.savez_compressed(tmp_path / "real.npz", **z)
+    return tmp_path / "real.npz"
+
+
+def test_replay_of_real_data_needs_real_calibration_and_stays_out_of_live_history(tmp_path):
+    from neurosteno.acquisition.replay import ReplaySource
+    path = _real_origin_recording(tmp_path)
+    eng, clock = make_engine()
+    eng.set_source(ReplaySource(path, clock=clock))
+    run_until(eng, clock, lambda: eng.quality.get("problem") and "calibrated" in eng.quality["problem"], max_s=5)
+    assert "Replayed real EEG is not calibrated" in eng.quality["problem"]
+    snap = snapshot(eng)
+    assert snap["mode"]["calibration_required"] and not snap["mode"]["calibrated"]
+    assert snap["mode"]["kind"] == "replay" and snap["mode"]["replay_of"] == "real"
+    assert eng.source_origin() == "real" and eng.history_origin() == "replay"
+    assert eng.phase == Phase.COMM_UNAVAILABLE
+
+
+def test_mode_calibrated_flag_and_electrode_aliases():
+    eng, clock = make_engine()
+    run_until(eng, clock, lambda: eng.electrodes is not None and eng.electrodes["window_s"] >= 4, max_s=8)
+    snap = snapshot(eng)
+    assert snap["mode"]["calibration_required"] is False and snap["mode"]["calibrated"] is False
+    ec = snap["electrode_check"]
+    assert ec["ready"] and ec["reference_ok"] and ec["message"]
+    assert all(c["status"] == c["verdict"] for c in ec["channels"])

@@ -56,7 +56,7 @@ def channel_contacts(window: np.ndarray, fs: float, labels: list[str],
     cfg = cfg or ElectrodeConfig()
     n, k = window.shape if window.ndim == 2 else (0, len(labels))
     if n < int(fs):
-        return [{"label": lbl, "verdict": "no_data", "contact_score": None, "issues": [], "metrics": {}}
+        return [{"label": lbl, "verdict": "no_data", "contact_score": None, "issues": [], "advice": [], "metrics": {}}
                 for lbl in labels]
     x = window.astype(np.float64)
     t = np.arange(n) / fs
