@@ -145,7 +145,8 @@ def normalize_unit(unit: str) -> str:
         fixed = u.encode("latin-1").decode("utf-8")
     except (UnicodeEncodeError, UnicodeDecodeError):
         fixed = u
-    return fixed.replace("\u03bc", "µ")
+    fixed = fixed.replace("\u03bc", "\u00b5")
+    return "\u00b5V" if fixed == "uV" else fixed  # ASCII spelling (simulator, some recordings)
 
 
 def verify_channel_map(channels: list[ChannelInfo], U=None) -> dict:
@@ -179,7 +180,7 @@ def verify_channel_map(channels: list[ChannelInfo], U=None) -> dict:
         else:
             row["ok"] = bool(got) if kind == "eeg" else None
         if kind in EXPECTED_UNITS and got:
-            units = sorted({channels[i].unit for i in got})
+            units = sorted({normalize_unit(c.unit) for c in channels if c.kind == kind})
             row["units"] = units
             row["unit_ok"] = units == [EXPECTED_UNITS[kind]]
         checks.append(row)

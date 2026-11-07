@@ -270,7 +270,7 @@ class InteractionMixin:
                     mark(e, "conflict: nod and shake together")
                 self.attempt = None
                 self._reject("Conflicting head gestures (nod and shake together): choice NOT accepted",
-                             kind="not_confirmed")
+                             kind="conflict")
                 return
             if kinds:
                 k = kinds.pop()
@@ -296,7 +296,7 @@ class InteractionMixin:
                 mark(e, "conflict with EEG YES: choice withdrawn")
             self.gesture_window = None
             self._reject("EEG said YES but a head SHAKE said NO: conflicting commands, choice NOT accepted",
-                         kind="not_confirmed")
+                         kind="conflict")
             return
         for e in acc:
             k = e["kind"]
@@ -525,3 +525,123 @@ class InteractionMixin:
                 "computing": self._policy_future is not None,
             },
         }
+
+
+    # ===================================================================================
+    # contract v2.0 adapter (Agent B's proposed shapes, issue #1). Derived from the state above;
+    # nothing here changes behaviour.
+    # ===================================================================================
+    METHOD_KIND = {"nod_yes": "nod", "shake_no": "shake", "tilt_nav": "tilt"}
+
+    def contract_v2(self) -> dict:
+        now = self.clock()
+        eff = self.interaction["effective"]
+        modes = self.capability(light=True).modes()
+        src = self.source
+        lay = src.imu_layout() if src is not None else None
+        g = self.calib_results.get("gesture")
+        g = g if g and g.get("origin") == self.source_origin() else None
+        calibrating = self.calib is not None and self.calib.kind == "gesture"
+        n = self.cfg.n_choices
+        eeg_cal = self.stopping_for(n).calibrated
+        methods = {"eeg_ssvep": {"status": "calibrated" if eeg_cal else "not_calibrated", "enabled": True,
+                                 "reason": None if eeg_cal else "default thresholds (no SSVEP calibration on this origin)",
+                                 "calibration": None}}
+        for key, k in self.METHOD_KIND.items():
+            usable = bool(self.gesture_cfg.usable.get(k))
+            if lay is None or not self.imu.get("available"):
+                st, why = "unavailable", self.imu.get("reason") or "no motion sensor"
+            elif calibrating:
+                st, why = "calibrating", None
+            elif not self.gestures_ready():
+                st, why = "not_calibrated", "needs a gesture calibration on this data origin"
+            elif not usable:
+                st, why = "unreliable", "not reliably detected in calibration"
+            elif not self.gesture_cfg.enabled:
+                st, why = "disabled", "caregiver has not enabled gesture input"
+            else:
+                st, why = "calibrated", None
+            in_mode = eff == "motion_assisted" if k == "tilt" else eff in ("hybrid", "motion_assisted")
+            enabled = st == "calibrated" and in_mode
+            if st == "calibrated" and not in_mode:
+                why = f"not used in {eff} mode"
+            cal = None
+            if g and g.get("estimates", {}).get(k):
+                e = g["estimates"][k]
+                fa = e["false_activations"]
+                cal = {"origin": g.get("origin"), "claim": claim_for(g.get("origin", "none")), "attempts": e["cues"],
+                       "detected": e["hits"], "rest_s": fa["exposure_s"], "rest_false_triggers": fa["events"],
+                       "false_per_hour_upper95": fa.get("upper95_per_hour"),
+                       "median_latency_s": e["latency_s"]["mean"], "confidence": e["sensitivity_loo"],
+                       "verdict": "pass" if g["usable"].get(k) else ("unreliable" if e["hits"] else "fail"),
+                       "at": g.get("time")}
+            methods[key] = {"status": st, "enabled": enabled, "reason": why, "calibration": cal}
+        motion = self.imu.get("motion") or {}
+        a = self.attempt
+        contaminated = bool(a is not None and src is not None and self._last_motion_sample >= a.start_sample)
+        imu = {"present": lay is not None, "streaming": bool(self.imu.get("available")),
+               "origin": self.source_origin(), "claim": claim_for(self.source_origin()),
+               "moving": bool(motion.get("moving")),
+               "motion_level": (round(min(1.0, motion["angular_speed_dps"] / (2 * motion["gate_dps"])), 2)
+                                if motion.get("gate_dps") else None),
+               "eeg_contaminated": contaminated, "seconds_since_last_sample": self.quality.get("age_s"),
+               "reason": self.imu.get("reason")}
+        last = None
+        if self.gesture_events:
+            e = self.gesture_events[-1]
+            act = e.get("action") or ""
+            used = "yes" if "(YES)" in act else "no" if "(NO)" in act else "nav" if "back" in act else None
+            last = {"gesture": e.get("kind"), "confidence": None, "accepted": bool(e.get("accepted")),
+                    "used_for": used, "reason": act or e.get("reason"), "time": e.get("time")}
+        gc = None
+        if calibrating:
+            c = self.calib
+            step = c.plan[c.idx] if c.idx < len(c.plan) else None
+            sub = ("computing" if step is None or c.sub == "computing" else
+                   "rest" if step in ("neutral", "natural") else "cue")
+            gc = {"gesture": step if step in KINDS else None, "sub": sub, "step_label": step,
+                  "trial": sum(1 for s in c.plan[:c.idx] if s in KINDS), "trials": sum(1 for s in c.plan if s in KINDS),
+                  "step": c.idx + 1, "steps": len(c.plan), "elapsed": round(now - c.sub_since, 2),
+                  "durations": {"rest": GESTURE_NEUTRAL_S, "natural": GESTURE_NATURAL_S, "cue": dict(GESTURE_CUE_S),
+                                "feedback": 0.0},
+                  "last_trial": None}
+        avail = [m for m in ("eeg_only", "hybrid", "motion_assisted") if modes.get(m)]
+        if not (self.gesture_cfg.enabled and self.gestures_ready()):
+            avail = ["eeg_only"]
+        inp = {"mode": eff, "requested": self.interaction["requested"], "modes_available": avail,
+               "mode_reason": self.interaction["reason"], "methods": methods, "imu": imu, "last_gesture": last,
+               "gesture_calibration": gc}
+        # ---- policy for the CURRENT action ---------------------------------------------------
+        kind = a.kind if a is not None else ("navigate" if self.phase.value == "IDLE" else "choose")
+        opts = [{"method": "eeg_ssvep", "allowed": True, "expected_latency_s": None, "confidence": None,
+                 "reason": "always available"}]
+        cons = ["final message: EEG 'Yes, send it' required (gestures never send)",
+                "gestures never trigger urgent messages or emergencies",
+                "conflicting EEG/gesture answers: choice not accepted"]
+        gw = self.gesture_window_s() if self.gestures_ready() else None
+        for key, k in self.METHOD_KIND.items():
+            m = methods[key]
+            if kind == "review":
+                allowed, why = False, "not for final SEND"
+            elif kind == "confirm" and k in ("nod", "shake"):
+                allowed, why = m["enabled"], m["reason"] or "step YES/NO"
+            elif kind in ("navigate", "choose") and k == "tilt":
+                allowed, why = m["enabled"], m["reason"] or "sustained tilt = back"
+            else:
+                allowed, why = False, "not used for this action"
+            calm = m["calibration"] or {}
+            opts.append({"method": key, "allowed": allowed, "expected_latency_s": calm.get("median_latency_s"),
+                         "confidence": calm.get("confidence"), "reason": why,
+                         "window_s": gw if allowed and k != "tilt" else None})
+        selected = "eeg_ssvep"
+        if kind == "confirm" and self.gesture_window_open():
+            selected = "nod_yes"  # the EEG YES/NO still runs in parallel as the fallback
+        elif kind == "confirm" and eff != "eeg_only":
+            selected = "eeg_fallback"
+        pd = self.policy_decision or {}
+        pol = {"action": kind, "selected": selected, "options": opts, "constraints": cons,
+               "source": "calibrated" if (eeg_cal and self.gestures_ready()) else "assumption",
+               "optimiser": None if not pd else {"chosen": (pd.get("chosen") or {}).get("key"),
+                                                 "reason": pd.get("reason"), "applied": self.applied_policy,
+                                                 "auto": self.cfg.interaction_mode == "auto"}}
+        return {"input": inp, "policy": pol}

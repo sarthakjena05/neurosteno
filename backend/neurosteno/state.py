@@ -128,7 +128,8 @@ def snapshot(eng: Engine) -> dict:
             "provisional_steps": sum(1 for c in eng.nav.crumbs if c.provisional)},
         "sent": eng.sent[-10:][::-1],
         "safety_invariants": {"messages_sent_without_final_confirmation": 0,
-                              "blocked_unconfirmed_send_attempts": eng.unconfirmed_send_blocked},
+                              "blocked_unconfirmed_send_attempts": eng.unconfirmed_send_blocked,
+                              "gesture_final_send_blocked": eng.gesture_blocked_final},
         "comm": eng.comm,
         "quality": eng.quality,
         "decoder": {
@@ -168,6 +169,7 @@ def snapshot(eng: Engine) -> dict:
         # ---- additive (contract v1.4): optional IMU / gestures / interaction policy ----
         "imu": eng.imu,
         **eng.interaction_state(),
+        **eng.contract_v2(),  # Agent B v2.0 shapes: input, policy
         "emergency": eng.emergency,
         "emergency_sources": EMERGENCY_SOURCES,
         "recording": None if not eng.recorder else {

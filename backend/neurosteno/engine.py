@@ -743,7 +743,7 @@ class Engine(InteractionMixin):
         self._enter(Phase.ACCEPTED)
 
     def _reject(self, reason: str, kind: str = "rejected") -> None:
-        self._evidence("abstain" if kind == "not_confirmed" else "wrong")
+        self._evidence("abstain" if kind in ("not_confirmed", "conflict") else "wrong")
         self.outcomes.append(("rejected", None))
         self._task_count("rejected_predictions")
         self.feedback = {"type": kind, "label": (self.highlight or {}).get("label", ""), "reason": reason}

@@ -266,10 +266,14 @@ def dispatch(action: str, p: dict) -> dict | None:
             raise ValueError("Blink input requires a successful blink calibration on real EEG")
         e.blink_cfg.enabled = on
         e.log("blink", f"Experimental blink-to-reject {'enabled' if on else 'disabled'}")
-    elif action == "set_interaction_mode":
-        e.set_interaction_mode(str(p["mode"]))
-    elif action == "set_gestures_enabled":
-        e.set_gestures_enabled(bool(p["on"]))
+    elif action in ("set_interaction_mode", "set_input_mode"):
+        mode = str(p["mode"])
+        if action == "set_input_mode" and mode not in ("eeg_only", "auto") \
+                and mode not in e.contract_v2()["input"]["modes_available"]:
+            raise ValueError(f"mode {mode} not available: {e.interaction['reason']}")
+        e.set_interaction_mode(mode)
+    elif action in ("set_gestures_enabled", "set_gesture_enabled"):
+        e.set_gestures_enabled(bool(p["on"]))  # v1.4: one switch for all usable gestures
     elif action == "start_gesture_calibration":
         e.start_gesture_calibration(int(p.get("cues_per_gesture", 6)))
     elif action == "optimise_policy":
@@ -313,8 +317,14 @@ def dispatch(action: str, p: dict) -> dict | None:
         elif action == "sim_drop":
             sim.drop_probability = float(p["p"])
         elif action == "sim_gesture":
-            sim.perform_gesture(p["kind"])
-            e.log("sim", f"Virtual patient head movement: {p['kind']}")
+            k = p.get("kind") or p.get("gesture")
+            sim.perform_gesture(k)
+            e.log("sim", f"Virtual patient head movement: {k}")
+        elif action == "sim_capability":
+            prof = {"no_movement": "no_head_control", "reliable_movement": "accurate",
+                    "unreliable_movement": "unreliable"}.get(p["profile"], p["profile"])
+            sim.set_motion_profile(prof)
+            e.log("sim", f"Virtual patient motion profile: {prof}")
         elif action == "sim_motion_profile":
             sim.set_motion_profile(str(p["profile"]))
             e.log("sim", f"Virtual patient motion profile: {p['profile']}")
