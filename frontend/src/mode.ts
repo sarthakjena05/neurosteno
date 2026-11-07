@@ -13,6 +13,7 @@ export const MODE_FRAME: Record<ModeKind, string> = {
   simulated: 'mode-frame-sim',
   replay: 'mode-frame-replay',
   none: 'mode-frame-none',
+  assisted: 'mode-frame-assisted',
 }
 
 export function originLabel(origin: string | null | undefined): string {
@@ -20,6 +21,7 @@ export function originLabel(origin: string | null | undefined): string {
     case 'real': return 'REAL EEG'
     case 'simulated': return 'SIMULATED EEG (synthetic)'
     case 'replay': return 'REPLAYED EEG'
+    case 'assisted': return 'ASSISTED EEG (real stream + simulated augmentation)'
     case 'none': case null: case undefined: return 'no EEG'
     default: return `${String(origin).toUpperCase()} data`
   }
@@ -61,6 +63,9 @@ export function modeCaption(s: State): string {
   switch (s.mode.kind) {
     case 'real': return calibratedForCurrent(s) ? 'Live headset · calibrated on real data' : 'Live headset · NOT calibrated · communication is off until calibration'
     case 'simulated': return 'Synthetic signals from a virtual patient. Not a person’s brain activity.'
+    case 'assisted': return s.mode.assisted_base === 'real'
+      ? 'Live headset EEG with SIMULATED SSVEP augmentation for the chosen target. Every selection here is ASSISTED, not independent EEG decoding.'
+      : 'Dry run: simulated EEG plus simulated augmentation (no headset). Every selection here is ASSISTED.'
     case 'replay': return `Playback of a recording (${originLabel(s.mode.replay_of)}). Not live.${calibrationRequired(s) && !calibratedForCurrent(s) ? ' Needs a real-data calibration before it can communicate.' : ''}`
     case 'none': return 'No EEG source connected'
   }

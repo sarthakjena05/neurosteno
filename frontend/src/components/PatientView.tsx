@@ -15,6 +15,7 @@ export const MODE_STYLE: Record<string, string> = {
   real: 'bg-real text-white',
   simulated: 'bg-sim text-white',
   replay: 'bg-replay text-black',
+  assisted: 'bg-assisted text-black',
   none: 'bg-zinc-600 text-white',
 }
 
@@ -188,7 +189,9 @@ function Evidence({ s }: { s: State }) {
 
 export function ModeBadge({ s }: { s: State }) {
   const k = s.mode.kind
-  const label = k === 'replay' ? `REPLAY · recorded ${String(s.mode.replay_of ?? 'unknown').toUpperCase()} data` : s.mode.label
+  const label = k === 'replay' ? `REPLAY · recorded ${String(s.mode.replay_of ?? 'unknown').toUpperCase()} data`
+    : k === 'assisted' ? (s.mode.assisted_base === 'real' ? 'ASSISTED · real EEG + simulated augmentation' : 'ASSISTED · dry run (no headset)')
+    : s.mode.label
   return (
     <span data-testid="mode-badge" className={`rounded-xl px-4 py-2 text-lg font-black tracking-wide ${MODE_STYLE[k]}`}>
       {label}{k === 'simulated' ? ' · synthetic signals' : ''}

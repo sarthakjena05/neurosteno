@@ -18,7 +18,7 @@ export function preflightChecks(s: State & { _missing?: string[] }, link: Pick<E
     detail: miss.length ? `missing from the backend: ${miss.join(', ')} (UI shows safe empty defaults)` : 'all expected fields present' })
   if (link.badMessages) c.push({ id: 'parse', level: 'warn', title: 'Unreadable messages', detail: `${link.badMessages} WebSocket message(s) could not be parsed and were ignored` })
   const k = s.mode.kind
-  c.push({ id: 'mode', level: k === 'simulated' ? 'ok' : k === 'none' ? 'fail' : 'warn', title: 'EEG source labelled',
+  c.push({ id: 'mode', level: k === 'simulated' || k === 'assisted' ? 'ok' : k === 'none' ? 'fail' : 'warn', title: 'EEG source labelled',
     detail: k === 'simulated' ? 'SIMULATED EEG: striped purple frame + badge visible' : k === 'none' ? 'no source: Demo step "Switch to Simulated"' : `${s.mode.label}: make sure the audience sees this is ${k === 'real' ? 'REAL (calibrated?)' : 'a REPLAY'}` })
   const sig = s.phase !== 'COMM_UNAVAILABLE' && s.quality.signal_ok !== false
   c.push({ id: 'signal', level: s.phase === 'OFF' ? 'fail' : sig ? 'ok' : 'warn', title: 'Signal / communication',

@@ -30,7 +30,8 @@ MODES = ("eeg_only", "hybrid", "motion_assisted")
 
 
 def claim_for(origin: str) -> str:
-    return {"real": "measured_real", "replay": "replayed_recording", "simulated": "simulated"}.get(origin, "assumed")
+    return {"real": "measured_real", "replay": "replayed_recording", "simulated": "simulated",
+            "assisted": "assisted_augmented"}.get(origin, "assumed")
 
 
 @dataclass

@@ -333,7 +333,7 @@ class Engine(InteractionMixin):
         return StoppingConfig()
 
     def allowed_choices(self) -> list[int]:
-        if self.source is None or self.source.kind == SourceKind.SIMULATED:
+        if self.source is None or self.source.kind in (SourceKind.SIMULATED, SourceKind.ASSISTED):
             return [2, 3, 5]
         out = [2]
         for n in (3, 5):
