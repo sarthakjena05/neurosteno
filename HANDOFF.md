@@ -1,5 +1,28 @@
 # HANDOFF — Agent A (EEG/backend), branch `feature/eeg-backend`
 
+## LATEST STATUS (read first)
+- Last tested commit: `331358b`. Full backend suite: **119 passed, 1 xfailed**. The xfail is the strict
+  `test_false_nods_from_coughs_and_swallows_rejected`, a known weakness.
+- Contract v1.4 (accepts Agent B's v2.0 `input`/`policy` shapes) is posted and verified:
+  https://github.com/sarthakjena05/neurosteno/issues/1#issuecomment-6712916615
+- **Known failure: cough-like jerks are accepted as nods** (4-13/20 at 2-5 deg, 14-17/20 at 6-15 deg).
+- **UNTESTED fix saved, not applied:** `backend/wip/jerk_fix_untested.patch`. It adds angular excursion and
+  tempo features to `signal/gestures.py`.
+  - Probe, seed 5: small jerks 0/20, large jerks 3/20, nods 27/30.
+  - Seeds 12/21/22: nods 19-20/20.
+  - Seed 11: the calibration already marked the nod unusable (LOO 0.667, "multi-axis" rejections); check whether
+    that happens without the patch too.
+- Next steps:
+  1. `git apply backend/wip/jerk_fix_untested.patch`.
+  2. Run the probe scripts (jerk/nod per seed) and the full suite.
+  3. Remove the xfail if the jerk test passes; then commit and push.
+  4. Re-run `scripts/run_multimodal_benchmark.py` to `backend/reports/`.
+  5. Investigate the M1/M2 idle-false-send anomaly.
+  6. Update the README.
+  7. Answer B5 (history isolation) on issue #1.
+- Items 2 and 4 under "Known bugs" below are DONE in 331358b: the test bugs are fixed and the suite has been run.
+
+
 Last updated: 2026-11-07. Owner role: Agent A (backend). Agent B owns `frontend/**` on `feature/neuroroute-ui`.
 Coordination: GitHub issue #1 (sarthakjena05/neurosteno). Never merge or push to `main`. Never edit `frontend/**` or `DEMO_SCRIPT.md`.
 **No physical hardware validation until the user confirms the headset is available.**

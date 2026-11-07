@@ -1,0 +1,48 @@
+diff --git a/backend/neurosteno/signal/gestures.py b/backend/neurosteno/signal/gestures.py
+index 4cd0630..ef67d6b 100644
+--- a/backend/neurosteno/signal/gestures.py
++++ b/backend/neurosteno/signal/gestures.py
+@@ -160,7 +160,13 @@ def seg_features(pre: dict, s: int, e: int, axes: dict) -> dict:
+         if u is None:
+             continue
+         p = w @ np.asarray(u)
+-        f[kind] = {"amp": float(np.max(np.abs(p))), "spec": float((p ** 2).sum() / tot), "lobes": _lobes(p)}
++        amp = float(np.max(np.abs(p)))
++        ang = np.cumsum(p) / FS_D                       # head angle about the gesture axis (deg)
++        exc = float(np.ptp(ang)) if len(ang) else 0.0
++        # tempo = peak speed / angular excursion ~ pi / cycle duration: coughs, swallows and jerks
++        # are much faster for their size than a deliberate nod or shake.
++        f[kind] = {"amp": amp, "spec": float((p ** 2).sum() / tot), "lobes": _lobes(p),
++                   "exc_deg": exc, "tempo": amp / max(exc, 0.5)}
+     return f
+ 
+ 
+@@ -183,6 +189,10 @@ def classify(f: dict, cfg: GestureConfig, kinds=OSC, require_usable: bool = True
+             why.append(f"duration outside calibrated {kind} range")
+         elif x["amp"] < th["amp_dps"]:
+             why.append(f"below calibrated {kind} amplitude")
++        elif "exc_min_deg" in th and x.get("exc_deg", 1e9) < th["exc_min_deg"]:
++            why.append(f"head turned less than a calibrated {kind}")
++        elif "tempo_max" in th and x.get("tempo", 0.0) > th["tempo_max"]:
++            why.append(f"too abrupt for a deliberate {kind} (cough/jerk-like)")
+         else:
+             cands.append(kind)
+     if len(cands) == 2:
+@@ -351,9 +361,16 @@ def _fit(cued_feats: dict, null_feats: list[dict], tilt_cued: list[dict], null_a
+              "dur_min_s": float(max(0.15, 0.6 * dur.min())), "dur_max_s": float(1.5 * dur.max() + 0.2),
+              "max_speed_dps": float(2.0 * max(f["peak_dps"] for f in pos)),
+              "lin_max_g": float(max(0.15, 1.5 * max(f["lin_g"] for f in pos)))}
++        if all("exc_deg" in f[kind] for f in pos):
++            exc = np.array([f[kind]["exc_deg"] for f in pos])
++            tempo = np.array([f[kind]["tempo"] for f in pos])
++            t["exc_min_deg"] = float(max(3.0, 0.5 * exc.min()))
++            t["tempo_max"] = float(1.25 * tempo.max())
+         match = [f[kind]["amp"] for f in null_feats if kind in f and f[kind]["lobes"] >= 2
+                  and f[kind]["spec"] >= t["spec_min"] and t["dur_min_s"] <= f["dur_s"] <= t["dur_max_s"]
+-                 and f["lin_g"] <= t["lin_max_g"]]
++                 and f["lin_g"] <= t["lin_max_g"]
++                 and f[kind].get("exc_deg", 1e9) >= t.get("exc_min_deg", 0.0)
++                 and f[kind].get("tempo", 0.0) <= t.get("tempo_max", 1e9)]
+         t["amp_dps"] = float(max(1.5 * act, 1.15 * max(match, default=0.0)))
+         t["null_matches"] = len(match)
+         th[kind] = t
