@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { command } from '../api'
 import { flicker, type Stim } from '../flicker'
-import { calibratedForCurrent, MODE_FRAME, modeCaption, originLabel } from '../mode'
+import { speakCue } from '../speech'
+import { calibratedForCurrent, calibrationRequired, isReplayedMessage, MODE_FRAME, modeCaption, originLabel } from '../mode'
 import type { Slot, State, Target } from '../types'
 
 const ICONS: Record<string, string> = {
@@ -192,9 +193,9 @@ export function ModeBadge({ s }: { s: State }) {
   )
 }
 
-/** REAL mode only: whether the decoder may communicate on this data at the current target count. */
+/** Real-origin data (live or replayed): whether the decoder may communicate at the current target count. */
 export function CalibrationChip({ s }: { s: State }) {
-  if (s.mode.kind !== 'real') return null
+  if (!calibrationRequired(s)) return null
   const ok = calibratedForCurrent(s)
   return (
     <span data-testid="calib-chip" className={`rounded-xl px-3 py-2 text-base font-bold ${ok ? 'bg-green-900 text-green-100' : 'bg-amber-400 text-black'}`}>
@@ -216,11 +217,13 @@ function Overlay({ children, tone = 'bg-black/85', label, role = 'dialog', testI
 
 /** Says which data origin produced a sent message, so a simulated message is never mistaken for a real one. */
 function SentOrigin({ s }: { s: State }) {
-  const origin = s.sent[0]?.data_origin ?? s.mode.origin
-  if (origin === 'real' && s.mode.kind === 'real') return null
+  const m = s.sent[0]
+  const origin = m?.data_origin ?? s.mode.origin
+  const replayed = isReplayedMessage(m, s)
+  if (origin === 'real' && !replayed) return null
   return (
     <p data-testid="sent-origin" className="rounded-xl bg-black/50 px-4 py-2 text-xl font-bold">
-      Produced from {originLabel(origin)}{s.mode.kind === 'replay' ? ' played back from a recording' : ''}. Not a live real-EEG message.
+      Produced from {originLabel(origin)}{replayed ? ' played back from a recording' : ''}. Not a live real-EEG message.
     </p>
   )
 }
@@ -274,7 +277,42 @@ function CalibrationOverlay({ s }: { s: State }) {
       </Overlay>
     )
   }
+  if (c.kind === 'alpha') return <AlphaCheckOverlay s={s} />
   return <CalibrationTargets s={s} />
+}
+
+const ALPHA_SPEECH: Record<string, string> = {
+  eyes_open: 'Open your eyes and look at the cross.',
+  eyes_closed: 'Close your eyes and relax.',
+  computing: 'Done. You can relax.',
+}
+
+/** Eyes-open / eyes-closed alpha check (contract v1.1). No flicker is shown during this check. */
+function AlphaCheckOverlay({ s }: { s: State }) {
+  const c = s.calibration!
+  const sub = c.sub
+  useEffect(() => { if (ALPHA_SPEECH[sub]) speakCue(ALPHA_SPEECH[sub]) }, [sub])
+  const closed = sub === 'eyes_closed'
+  const total = c.durations[sub] ?? 10
+  const left = Math.max(0, Math.ceil(total - c.elapsed))
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Eyes open and eyes closed signal check" data-testid="alpha-overlay" data-sub={sub}
+      className={`absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 rounded-3xl p-8 text-center ${closed ? 'bg-black' : 'bg-ink'}`}>
+      <p className="text-xl text-muted">Signal check · eyes open / closed · step {Math.min(c.trial + 1, c.trials)} of {c.trials}</p>
+      {sub === 'computing' ? (
+        <p className="text-5xl font-black">Checking the signal…</p>
+      ) : (
+        <>
+          {!closed && <span aria-hidden className="text-8xl font-black text-sky-300">+</span>}
+          <p role="status" className={`text-6xl font-black md:text-7xl ${closed ? 'text-zinc-300' : ''}`}>
+            {closed ? 'CLOSE your eyes' : 'Keep your eyes OPEN'}
+          </p>
+          <p className="text-2xl text-muted">{closed ? 'Relax. You will hear when to open them.' : 'Look at the cross and relax.'} {left} s</p>
+        </>
+      )}
+      <p className="text-sm text-muted">No flicker during this check. It confirms the headset is picking up brain activity (alpha rhythm), not decoding choices.</p>
+    </div>
+  )
 }
 
 function CalibTarget({ i, freq, active, cue }: { i: number; freq: number; active: boolean; cue: boolean }) {

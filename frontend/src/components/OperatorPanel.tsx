@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { command, get, post } from '../api'
 import DemoGuide from './DemoGuide'
+import SignalCheck from './SignalCheck'
 import { flicker } from '../flicker'
 import type { State } from '../types'
 
@@ -148,7 +149,7 @@ function SessionTab({ s }: { s: State }) {
       </Section>
       <Section title="Messages confirmed by the patient">
         {s.sent.length === 0 && <p className="text-xs text-muted">None yet.</p>}
-        {s.sent.map((m) => <p key={m.time} className="text-sm">“{m.text}” <span className="text-xs text-muted">({m.data_origin}, {new Date(m.time * 1000).toLocaleTimeString()})</span></p>)}
+        {s.sent.map((m) => <p key={m.time} className="text-sm">“{m.text}” <span className="text-xs text-muted">({m.data_origin}{m.source === 'replay' ? ', replayed' : ''}, {new Date(m.time * 1000).toLocaleTimeString()})</span></p>)}
       </Section>
     </div>
   )
@@ -208,6 +209,9 @@ function SignalTab({ s }: { s: State }) {
   const last = s.attempt?.last
   return (
     <div className="flex flex-col gap-3">
+      <Section title="Signal check: electrodes + eyes open/closed">
+        <SignalCheck s={s} />
+      </Section>
       <Section title="Signal quality (independent of classification)">
         {!q.channels?.length && <p className="text-sm text-muted">No data.</p>}
         <div className="grid grid-cols-4 gap-1 text-xs">
@@ -348,9 +352,9 @@ function MetricsTab({ s }: { s: State }) {
       </Section>
       <Section title="Summary (grouped by data origin; real, simulated and replay never mixed)">
         <table className="text-xs">
-          <thead><tr><th>origin</th><th>routing</th><th>profile</th><th>n</th><th>msgs</th><th>sel</th><th>rej</th><th>time s</th><th>correct</th></tr></thead>
+          <thead><tr><th>origin</th><th>source</th><th>routing</th><th>profile</th><th>n</th><th>msgs</th><th>sel</th><th>rej</th><th>time s</th><th>correct</th></tr></thead>
           <tbody>{s.metrics.summary.map((r: any, i) => (
-            <tr key={i} className={r.origin === 'real' ? 'text-green-300' : ''}><td>{r.origin}</td><td>{r.routing_mode}</td><td>{r.profile}</td><td>{r.n}</td><td>{r.messages}</td><td>{r.mean_selections}</td><td>{r.mean_rejected_predictions}</td><td>{r.mean_completion_s}</td><td>{r.correct_final}</td></tr>
+            <tr key={i} className={r.origin === 'real' && r.source !== 'replay' ? 'text-green-300' : ''}><td>{r.origin}</td><td>{r.source ?? '-'}</td><td>{r.routing_mode}</td><td>{r.profile}</td><td>{r.n}</td><td>{r.messages}</td><td>{r.mean_selections}</td><td>{r.mean_rejected_predictions}</td><td>{r.mean_completion_s}</td><td>{r.correct_final}</td></tr>
           ))}</tbody>
         </table>
       </Section>

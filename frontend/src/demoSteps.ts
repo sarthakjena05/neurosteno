@@ -85,9 +85,9 @@ export const DEMO_STEPS: DemoStep[] = [
   },
   {
     id: 'hardware', title: 'Real hardware', budget_s: 30,
-    say: ['UN-2024.09.36 streamed 2500/2500 samples at 250 Hz over UnicornPy with 0 drops.', 'The plausibility check caught that the headset was not on the scalp, so we make no claim about real classification yet.'],
+    say: ['UN-2024.09.36 streamed 2500/2500 samples at 250 Hz over UnicornPy with 0 drops.', 'Signal tab: the electrode map (contact score is a signal heuristic, not impedance) and the eyes open/closed alpha check confirm brain activity before any decoding claim. The bring-up recording failed the plausibility check (all 8 channels identical: headset not on the scalp), so we make no claim about real classification yet.'],
     actions: [],
-    goTab: 'Session',
+    goTab: 'Signal',
   },
 ]
 

@@ -36,7 +36,10 @@ confirmation and healthy signals. The Demo tab never presses YES/SEND for the pa
    Mention: nonresponse never triggers emergencies, and missing input is never approval.
 8. **Real hardware (30 s).** Show `scripts/unicorn_hardware_check.py` output: UN-2024.09.36 streamed
    2500/2500 samples at 250 Hz with 0 drops over UnicornPy. The plausibility check also caught that
-   the headset was not on the scalp, so we make no claim about real classification yet.
+   the headset was not on the scalp, so we make no claim about real classification yet. Open the
+   **Signal** tab: the electrode map (contact score is a signal heuristic, **not impedance**) and the
+   **Eyes open/closed check** (no flicker, spoken cues). On simulated data its result is labelled
+   "pipeline check only"; only a real-origin result may say "brain activity confirmed".
 
 Accessibility notes for Q&A: the patient screen uses Atkinson Hyperlegible and very large
 targets; operator tabs, overlays (dialog / alertdialog / status) and the evidence progress bar

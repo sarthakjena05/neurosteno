@@ -44,8 +44,10 @@ export interface State {
   version: number
   server_time?: number
   mode: { kind: 'real' | 'simulated' | 'replay' | 'none'; label: string; origin: string; is_real_eeg: boolean; replay_of: string | null
-    /** Requested from Agent A (R1); optional until the backend sends it. */
-    calibrated?: boolean }
+    /** Contract v1.2: calibrated thresholds exist for this origin AND the current n_choices. */
+    calibrated?: boolean
+    /** Contract v1.2: true for real-origin data, live or replayed. */
+    calibration_required?: boolean }
   source: null | {
     kind: string; sample_rate: number
     channels: { index: number; name: string; kind: string; unit: string; label: string }[]
@@ -65,7 +67,8 @@ export interface State {
   highlight: null | { slot_index: number; key: string; label: string; margin: number; window_s: number; provisional: boolean; provisional_remaining_s: number | null }
   feedback: null | { type: string; label: string; reason?: string; provisional?: boolean }
   review: null | { text: string; node_id: string; title: string; urgent: boolean; provisional_steps: number }
-  sent: { text: string; time: number; data_origin: string; urgent: boolean; provisional_steps: number }[]
+  /** `source` (contract v1.2): "replay" means played back, even when data_origin is "real". */
+  sent: { text: string; time: number; data_origin: string; source?: string; urgent: boolean; provisional_steps: number }[]
   comm: { available: boolean; reason: string; needs_caregiver: boolean }
   quality: {
     channels?: ChannelQuality[]; common_mode?: number | null; stalled?: boolean; problem?: string | null
@@ -89,8 +92,31 @@ export interface State {
     cue_target: number | null; rest_trial: boolean; elapsed: number; durations: Record<string, number> }
   blink: { config: Record<string, unknown> & { enabled: boolean; calibrated: boolean; threshold_uv: number }
     events: { amplitude_uv: number; accepted: boolean; reason: string; time: number }[] }
+  /** Contract v1.1/1.2: signal-derived contact check (NOT impedance). null when no source runs. */
+  electrode_check?: ElectrodeCheck | null
   emergency: null | { active: boolean; source: string; source_label: string; validated: boolean; time: number }
   recording: null | { path: string; seconds: number }
   events: LogEvent[]
   vocabulary: { phrases: number; unique_sentences: number; nodes: number; max_depth: number; per_category: Record<string, number> }
+}
+
+export type ElectrodeVerdict = 'good' | 'suspect' | 'bad' | 'no_data'
+export interface ElectrodeChannel {
+  label: string; verdict: ElectrodeVerdict; status?: ElectrodeVerdict
+  /** 0..1 heuristic from the signal. NOT impedance (UnicornPy exposes none). */
+  contact_score: number | null
+  issues: string[]; advice: string[]; hint?: string | null
+  metrics?: Record<string, number | null>
+}
+export interface ElectrodeCheck {
+  window_s?: number; note?: string
+  ready?: boolean; reference_ok?: boolean; message?: string
+  summary?: { counts?: Partial<Record<ElectrodeVerdict, number>>; decoding_usable?: string[]; reference_off?: boolean; headline?: string }
+  channels: ElectrodeChannel[]
+  spectra?: { freqs: number[]; channels: Record<string, number[]> }
+}
+export interface AlphaResult {
+  verdict: 'eeg_confirmed' | 'weak' | 'not_detected' | 'invalid'; note: string; origin: string
+  channels?: { label: string; ratio: number; reactive: boolean; occipital: boolean; artifact?: boolean; peak_hz?: number }[]
+  reactive_occipital?: string[]
 }

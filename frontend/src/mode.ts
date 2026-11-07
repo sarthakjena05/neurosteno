@@ -41,12 +41,27 @@ export function calibratedForCurrent(s: State): boolean | null {
   return false
 }
 
+/**
+ * Whether this data must be calibrated on its own origin before it may communicate.
+ * Contract v1.2 `mode.calibration_required` (true for real-origin data, live OR replayed);
+ * falls back to "origin is real".
+ */
+export function calibrationRequired(s: State): boolean {
+  if (s.mode.kind === 'none') return false
+  return typeof s.mode.calibration_required === 'boolean' ? s.mode.calibration_required : s.mode.origin === 'real'
+}
+
+/** A sent message that was played back from a recording (data_origin alone is not enough). */
+export function isReplayedMessage(m: State['sent'][number] | undefined, s: State): boolean {
+  return m?.source != null ? m.source === 'replay' : s.mode.kind === 'replay'
+}
+
 /** Short, honest one-liner for the patient-screen header. */
 export function modeCaption(s: State): string {
   switch (s.mode.kind) {
     case 'real': return calibratedForCurrent(s) ? 'Live headset · calibrated on real data' : 'Live headset · NOT calibrated · communication is off until calibration'
     case 'simulated': return 'Synthetic signals from a virtual patient. Not a person’s brain activity.'
-    case 'replay': return `Playback of a recording (${originLabel(s.mode.replay_of)}). Not live.`
+    case 'replay': return `Playback of a recording (${originLabel(s.mode.replay_of)}). Not live.${calibrationRequired(s) && !calibratedForCurrent(s) ? ' Needs a real-data calibration before it can communicate.' : ''}`
     case 'none': return 'No EEG source connected'
   }
 }

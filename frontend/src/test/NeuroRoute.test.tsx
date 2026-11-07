@@ -45,7 +45,8 @@ describe('real vs simulated is unmistakable', () => {
     render(<PatientView s={mockState({ mode: REPLAY_OF_REAL })} />)
     expect(screen.getByTestId('mode-badge')).toHaveTextContent('REPLAY · recorded REAL data')
     expect(screen.getByTestId('mode-caption')).toHaveTextContent('Not live')
-    expect(screen.queryByTestId('calib-chip')).toBeNull()
+    // contract v1.2: real-origin replay is gated on a real-data calibration too
+    expect(screen.getByTestId('calib-chip')).toHaveTextContent('Not calibrated')
   })
 
   it('REAL mode shows NOT calibrated until a real-origin calibration supports this target count', () => {
